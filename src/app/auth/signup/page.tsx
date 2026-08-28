@@ -160,7 +160,7 @@ export default function SignUpPage() {
         setStep(3);
         setShowPushToast(false);
       } else {
-        setError(`Invalid OTP code entered. Check your Mailbox / SMS messages or use master OTP 123456.`);
+        setError(`Invalid OTP code entered. Please check the code sent to ${targetIdentifier}.`);
       }
     } catch {
       setError('OTP verification failed. Please try again.');
@@ -426,9 +426,6 @@ export default function SignUpPage() {
                   required
                 />
               </div>
-              <p className="text-[11px] text-[#8A8A82] mt-1 text-center">
-                Demo testing code: <strong className="font-mono text-[#3B6D11]">123456</strong> or code from Mailbox / SMS
-              </p>
             </div>
 
             <button
