@@ -102,7 +102,7 @@ export default function ClinicianShareViewPage() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
           <div className="bg-[#FAF9F5] p-4 rounded-2xl border border-[#E5E2D8]">
             <span className="text-[#8A8A82] font-bold block mb-1">PATIENT SUMMARY</span>
-            <p className="font-bold text-sm text-[#1F3D2B]">Adithya R. (25–34)</p>
+            <p className="font-bold text-sm text-[#1F3D2B]">Patient Record (25–34)</p>
             <p className="text-[#5F5E5A] mt-0.5">Kochi, Kerala, India</p>
             <p className="text-amber-800 font-semibold mt-1">Allergies: Salicylic Acid</p>
           </div>

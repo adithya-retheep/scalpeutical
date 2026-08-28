@@ -80,9 +80,9 @@ const INITIAL_EVIDENCE: EvidenceReference[] = [
 
 export const DEMO_USER: UserProfile = {
   userId: 'user_demo_101',
-  fullName: 'Adithya R.',
+  fullName: null,
   phoneNumber: '+919876543210',
-  loginId: 'adithya@scalpeutical.app',
+  loginId: 'user@scalpeutical.app',
   profileCompleted: true,
   baselineCompleted: true,
   ageRange: '25-34',

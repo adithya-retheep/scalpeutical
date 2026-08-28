@@ -3,67 +3,130 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../context/auth-context';
-import { UserCheck, Shield, Plus, X, ArrowRight, Save, Info, AlertTriangle, Volume2, Globe } from 'lucide-react';
+import { UserCheck, Plus, X, ArrowRight, Save, Info, AlertTriangle, Globe, Sparkles } from 'lucide-react';
+
+// CLINICAL TYPE-AHEAD SUGGESTION LISTS
+const COMMON_ALLERGIES_SUGGESTIONS = [
+  'Salicylic Acid',
+  'Synthetic Fragrance',
+  'Sodium Lauryl Sulfate (SLS)',
+  'Parabens',
+  'Coal Tar',
+  'Ketoconazole',
+  'Formaldehyde Releasers',
+  'Essential Oils',
+  'Linalool',
+  'Limonene',
+  'Propylene Glycol',
+  'Methylisothiazolinone (MIT)'
+];
+
+const COMMON_CONCERNS_SUGGESTIONS = [
+  'Visible flaking',
+  'Occasional itching',
+  'Scalp dryness',
+  'Redness & irritation',
+  'Excess oiliness',
+  'Scalp tightness',
+  'Hair thinning',
+  'Follicle tenderness',
+  'Product buildup',
+  'Sensitivity to weather'
+];
+
+const COMMON_HEALTH_CONDITIONS_SUGGESTIONS = [
+  'Seasonal allergies',
+  'Eczema / Atopic Dermatitis',
+  'Asthma',
+  'Psoriasis',
+  'Thyroid imbalance',
+  'Hypertension',
+  'None'
+];
+
+const COMMON_MEDICATIONS_SUGGESTIONS = [
+  'None',
+  'Antihistamines',
+  'Topical Corticosteroid',
+  'Antifungal Shampoo',
+  'Biotin Supplement',
+  'Vitamin D3',
+  'Minoxidil'
+];
 
 export default function ProfilePage() {
   const { user, updateProfile, completeProfileStep } = useAuth();
   const router = useRouter();
 
+  // All text fields start completely empty if user has not provided them
   const [fullName, setFullName] = useState(user?.fullName || '');
   const [ageRange, setAgeRange] = useState(user?.ageRange || '25-34');
   const [sex, setSex] = useState(user?.sex || 'Male');
-  const [location, setLocation] = useState(user?.location || 'Kochi, Kerala, India');
-  const [hairType, setHairType] = useState(user?.hairType || 'Wavy / Medium Density');
-  const [dietaryInfo, setDietaryInfo] = useState(user?.dietaryInfo || 'Balanced diet');
+  const [location, setLocation] = useState(user?.location || '');
+  const [hairType, setHairType] = useState(user?.hairType || '');
+  const [dietaryInfo, setDietaryInfo] = useState(user?.dietaryInfo || '');
   const [relevantHistory, setRelevantHistory] = useState(user?.relevantHistory || '');
   const [preferredLanguage, setPreferredLanguage] = useState<'en' | 'ml'>(user?.preferredLanguage || 'en');
 
-  // Arrays
-  const [concerns, setConcerns] = useState<string[]>(user?.scalpConcerns || ['Visible flaking', 'Occasional itching']);
+  // Arrays start empty or user-configured
+  const [concerns, setConcerns] = useState<string[]>(user?.scalpConcerns || []);
   const [newConcern, setNewConcern] = useState('');
+  const [showConcernSuggestions, setShowConcernSuggestions] = useState(false);
 
-  const [allergies, setAllergies] = useState<string[]>(user?.knownAllergies || ['Salicylic Acid', 'Synthetic Fragrance']);
+  const [allergies, setAllergies] = useState<string[]>(user?.knownAllergies || []);
   const [newAllergy, setNewAllergy] = useState('');
+  const [showAllergySuggestions, setShowAllergySuggestions] = useState(false);
 
   const [healthConditions, setHealthConditions] = useState<string[]>(user?.healthConditions || ['Seasonal allergies']);
   const [newCondition, setNewCondition] = useState('');
+  const [showConditionSuggestions, setShowConditionSuggestions] = useState(false);
 
   const [medications, setMedications] = useState<string[]>(user?.currentMedications || ['None']);
   const [newMed, setNewMed] = useState('');
+  const [showMedSuggestions, setShowMedSuggestions] = useState(false);
 
   const [savedSuccess, setSavedSuccess] = useState(false);
 
-  const handleAddConcern = () => {
-    if (newConcern.trim()) {
-      setConcerns([...concerns, newConcern.trim()]);
-      setNewConcern('');
+  // Add Item Helpers
+  const addAllergy = (item: string) => {
+    const val = item.trim();
+    if (val && !allergies.includes(val)) {
+      setAllergies([...allergies, val]);
     }
+    setNewAllergy('');
+    setShowAllergySuggestions(false);
   };
 
-  const handleAddAllergy = () => {
-    if (newAllergy.trim()) {
-      setAllergies([...allergies, newAllergy.trim()]);
-      setNewAllergy('');
+  const addConcern = (item: string) => {
+    const val = item.trim();
+    if (val && !concerns.includes(val)) {
+      setConcerns([...concerns, val]);
     }
+    setNewConcern('');
+    setShowConcernSuggestions(false);
   };
 
-  const handleAddCondition = () => {
-    if (newCondition.trim()) {
-      setHealthConditions([...healthConditions, newCondition.trim()]);
-      setNewCondition('');
+  const addCondition = (item: string) => {
+    const val = item.trim();
+    if (val && !healthConditions.includes(val)) {
+      setHealthConditions([...healthConditions, val]);
     }
+    setNewCondition('');
+    setShowConditionSuggestions(false);
   };
 
-  const handleAddMed = () => {
-    if (newMed.trim()) {
-      setMedications([...medications, newMed.trim()]);
-      setNewMed('');
+  const addMed = (item: string) => {
+    const val = item.trim();
+    if (val && !medications.includes(val)) {
+      setMedications([...medications, val]);
     }
+    setNewMed('');
+    setShowMedSuggestions(false);
   };
 
   const saveProfileData = () => {
     updateProfile({
-      fullName,
+      fullName: fullName.trim() ? fullName.trim() : null,
       ageRange,
       sex: sex as any,
       location,
@@ -90,6 +153,23 @@ export default function ProfilePage() {
     saveProfileData();
     router.push('/assessment/baseline');
   };
+
+  // Filtered Suggestion Generators
+  const filteredAllergies = COMMON_ALLERGIES_SUGGESTIONS.filter(
+    (item) => item.toLowerCase().includes(newAllergy.toLowerCase()) && !allergies.includes(item)
+  );
+
+  const filteredConcerns = COMMON_CONCERNS_SUGGESTIONS.filter(
+    (item) => item.toLowerCase().includes(newConcern.toLowerCase()) && !concerns.includes(item)
+  );
+
+  const filteredConditions = COMMON_HEALTH_CONDITIONS_SUGGESTIONS.filter(
+    (item) => item.toLowerCase().includes(newCondition.toLowerCase()) && !healthConditions.includes(item)
+  );
+
+  const filteredMeds = COMMON_MEDICATIONS_SUGGESTIONS.filter(
+    (item) => item.toLowerCase().includes(newMed.toLowerCase()) && !medications.includes(item)
+  );
 
   return (
     <div className="max-w-3xl mx-auto space-y-6 animate-in fade-in duration-300">
@@ -121,14 +201,14 @@ export default function ProfilePage() {
 
       {savedSuccess && (
         <div className="bg-[#EAF0E7] border border-[#3B6D11]/30 text-[#3B6D11] p-4 rounded-2xl text-xs font-bold text-center">
-          Profile updated successfully! Information organized cleanly.
+          Profile updated successfully! Information saved cleanly.
         </div>
       )}
 
       {/* Profile Form */}
       <form onSubmit={handleSubmit} className="bg-white border border-[#E5E2D8] rounded-3xl p-6 sm:p-8 shadow-xs space-y-6">
         
-        {/* Language Preference for Audio Support & Explanations */}
+        {/* Language Preference */}
         <div className="bg-[#FAF9F5] border border-[#E5E2D8] rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div>
             <span className="font-bold text-xs text-[#1F3D2B] flex items-center gap-1.5">
@@ -168,14 +248,14 @@ export default function ProfilePage() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-[#5F5E5A] mb-1">
-              Full Name
+              Full Name (Optional)
             </label>
             <input
               type="text"
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
+              placeholder="e.g. John Doe"
               className="w-full px-4 py-3 bg-[#FAF9F5] border border-[#E5E2D8] rounded-xl text-sm font-medium text-[#1F3D2B]"
-              required
             />
           </div>
 
@@ -213,11 +293,11 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* Location / Weather / Climate */}
+        {/* Location & Hair Type */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-[#5F5E5A] mb-1">
-              Location & Local Climate (City, Region)
+              LOCATION & LOCAL CLIMATE (CITY, REGION)
             </label>
             <input
               type="text"
@@ -230,7 +310,7 @@ export default function ProfilePage() {
 
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-[#5F5E5A] mb-1">
-              Hair Type & Texture
+              HAIR TYPE & TEXTURE
             </label>
             <input
               type="text"
@@ -245,7 +325,7 @@ export default function ProfilePage() {
         {/* Dietary Info */}
         <div>
           <label className="block text-xs font-bold uppercase tracking-wider text-[#5F5E5A] mb-1">
-            Relevant Dietary Information
+            RELEVANT DIETARY INFORMATION
           </label>
           <input
             type="text"
@@ -256,124 +336,250 @@ export default function ProfilePage() {
           />
         </div>
 
-        {/* Known Allergies */}
-        <div className="border-t border-[#E5E2D8] pt-4">
+        {/* KNOWN ALLERGIES & SENSITIVITIES WITH TYPE-AHEAD SUGGESTIONS */}
+        <div className="border-t border-[#E5E2D8] pt-4 relative">
           <label className="block text-xs font-bold uppercase tracking-wider text-[#1F3D2B] mb-1 flex items-center gap-1.5">
             <AlertTriangle size={14} className="text-[#D4AF6A]" />
-            <span>Known Allergies & Sensitivities (Cross-Referenced in Product Scans)</span>
+            <span>KNOWN ALLERGIES & SENSITIVITIES (CROSS-REFERENCED IN PRODUCT SCANS)</span>
           </label>
+          
           <div className="flex flex-wrap gap-2 my-2">
-            {allergies.map((item, idx) => (
-              <span key={idx} className="bg-amber-50 border border-amber-200 text-amber-900 text-xs font-bold px-3 py-1.5 rounded-full flex items-center gap-1.5">
-                <span>{item}</span>
-                <button type="button" onClick={() => setAllergies(allergies.filter((_, i) => i !== idx))} className="hover:text-red-700">
-                  <X size={13} />
-                </button>
-              </span>
-            ))}
+            {allergies.length === 0 ? (
+              <span className="text-xs text-[#8A8A82] italic">No allergies added yet. Type below to add.</span>
+            ) : (
+              allergies.map((item, idx) => (
+                <span key={idx} className="bg-amber-50 border border-amber-200 text-amber-900 text-xs font-bold px-3 py-1.5 rounded-full flex items-center gap-1.5">
+                  <span>{item}</span>
+                  <button type="button" onClick={() => setAllergies(allergies.filter((_, i) => i !== idx))} className="hover:text-red-700">
+                    <X size={13} />
+                  </button>
+                </span>
+              ))
+            )}
           </div>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={newAllergy}
-              onChange={(e) => setNewAllergy(e.target.value)}
-              placeholder="e.g. Salicylic Acid, Fragrance, Sulphates"
-              className="flex-1 px-4 py-2.5 bg-[#FAF9F5] border border-[#E5E2D8] rounded-xl text-xs font-medium"
-            />
-            <button
-              type="button"
-              onClick={handleAddAllergy}
-              className="bg-[#1F3D2B] text-white px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-1"
-            >
-              <Plus size={14} /> Add
-            </button>
+
+          <div className="relative">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newAllergy}
+                onChange={(e) => {
+                  setNewAllergy(e.target.value);
+                  setShowAllergySuggestions(true);
+                }}
+                onFocus={() => setShowAllergySuggestions(true)}
+                placeholder="Type allergy (e.g. Salicylic Acid, Fragrance, Sulphates)..."
+                className="flex-1 px-4 py-2.5 bg-[#FAF9F5] border border-[#E5E2D8] rounded-xl text-xs font-medium text-[#1F3D2B] focus:outline-none focus:border-[#1F3D2B]"
+              />
+              <button
+                type="button"
+                onClick={() => addAllergy(newAllergy)}
+                className="bg-[#1F3D2B] text-white px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer"
+              >
+                <Plus size={14} /> Add
+              </button>
+            </div>
+
+            {/* Type-Ahead Suggestions Menu */}
+            {showAllergySuggestions && filteredAllergies.length > 0 && (
+              <div className="absolute z-20 left-0 right-16 mt-1 bg-white border border-[#E5E2D8] rounded-2xl shadow-lg max-h-48 overflow-y-auto py-1">
+                <div className="px-3 py-1.5 text-[10px] uppercase font-bold text-[#8A8A82] border-b border-[#E5E2D8] flex items-center gap-1">
+                  <Sparkles size={11} className="text-[#D4AF6A]" /> Clinical Allergens Suggestions (Click to Add)
+                </div>
+                {filteredAllergies.map((sug, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => addAllergy(sug)}
+                    className="w-full text-left px-4 py-2 text-xs text-[#1F3D2B] hover:bg-[#FAF9F5] font-medium flex items-center justify-between"
+                  >
+                    <span>{sug}</span>
+                    <Plus size={12} className="text-[#3B6D11]" />
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Relevant Scalp Concerns */}
-        <div className="border-t border-[#E5E2D8] pt-4">
+        {/* RELEVANT SCALP CONCERNS WITH TYPE-AHEAD SUGGESTIONS */}
+        <div className="border-t border-[#E5E2D8] pt-4 relative">
           <label className="block text-xs font-bold uppercase tracking-wider text-[#5F5E5A] mb-1">
-            Relevant Scalp Concerns
+            RELEVANT SCALP CONCERNS
           </label>
+          
           <div className="flex flex-wrap gap-2 my-2">
-            {concerns.map((item, idx) => (
-              <span key={idx} className="bg-[#FAF9F5] border border-[#E5E2D8] text-[#1F3D2B] text-xs font-semibold px-3 py-1.5 rounded-full flex items-center gap-1.5">
-                <span>{item}</span>
-                <button type="button" onClick={() => setConcerns(concerns.filter((_, i) => i !== idx))} className="hover:text-red-700">
-                  <X size={13} />
-                </button>
-              </span>
-            ))}
+            {concerns.length === 0 ? (
+              <span className="text-xs text-[#8A8A82] italic">No concerns added yet. Type below to add.</span>
+            ) : (
+              concerns.map((item, idx) => (
+                <span key={idx} className="bg-[#FAF9F5] border border-[#E5E2D8] text-[#1F3D2B] text-xs font-semibold px-3 py-1.5 rounded-full flex items-center gap-1.5">
+                  <span>{item}</span>
+                  <button type="button" onClick={() => setConcerns(concerns.filter((_, i) => i !== idx))} className="hover:text-red-700">
+                    <X size={13} />
+                  </button>
+                </span>
+              ))
+            )}
           </div>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={newConcern}
-              onChange={(e) => setNewConcern(e.target.value)}
-              placeholder="e.g. Visible scaling, tightness, oiliness"
-              className="flex-1 px-4 py-2.5 bg-[#FAF9F5] border border-[#E5E2D8] rounded-xl text-xs font-medium"
-            />
-            <button
-              type="button"
-              onClick={handleAddConcern}
-              className="bg-[#1F3D2B] text-white px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-1"
-            >
-              <Plus size={14} /> Add
-            </button>
+
+          <div className="relative">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newConcern}
+                onChange={(e) => {
+                  setNewConcern(e.target.value);
+                  setShowConcernSuggestions(true);
+                }}
+                onFocus={() => setShowConcernSuggestions(true)}
+                placeholder="Type concern (e.g. Visible flaking, itching, dryness)..."
+                className="flex-1 px-4 py-2.5 bg-[#FAF9F5] border border-[#E5E2D8] rounded-xl text-xs font-medium text-[#1F3D2B] focus:outline-none focus:border-[#1F3D2B]"
+              />
+              <button
+                type="button"
+                onClick={() => addConcern(newConcern)}
+                className="bg-[#1F3D2B] text-white px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer"
+              >
+                <Plus size={14} /> Add
+              </button>
+            </div>
+
+            {/* Type-Ahead Suggestions Menu */}
+            {showConcernSuggestions && filteredConcerns.length > 0 && (
+              <div className="absolute z-20 left-0 right-16 mt-1 bg-white border border-[#E5E2D8] rounded-2xl shadow-lg max-h-48 overflow-y-auto py-1">
+                <div className="px-3 py-1.5 text-[10px] uppercase font-bold text-[#8A8A82] border-b border-[#E5E2D8] flex items-center gap-1">
+                  <Sparkles size={11} className="text-[#D4AF6A]" /> Common Scalp Concerns (Click to Add)
+                </div>
+                {filteredConcerns.map((sug, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => addConcern(sug)}
+                    className="w-full text-left px-4 py-2 text-xs text-[#1F3D2B] hover:bg-[#FAF9F5] font-medium flex items-center justify-between"
+                  >
+                    <span>{sug}</span>
+                    <Plus size={12} className="text-[#3B6D11]" />
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Health & Medications */}
+        {/* HEALTH & MEDICATIONS WITH TYPE-AHEAD SUGGESTIONS */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t border-[#E5E2D8] pt-4">
-          <div>
+          
+          {/* HEALTH CONDITIONS */}
+          <div className="relative">
             <label className="block text-xs font-bold uppercase tracking-wider text-[#5F5E5A] mb-1">
-              Relevant Health Conditions (Past & Present)
+              RELEVANT HEALTH CONDITIONS (PAST & PRESENT)
             </label>
             <div className="flex flex-wrap gap-1.5 my-2">
               {healthConditions.map((item, idx) => (
-                <span key={idx} className="bg-[#FAF9F5] border border-[#E5E2D8] text-xs px-2.5 py-1 rounded-lg">
-                  {item}
+                <span key={idx} className="bg-[#FAF9F5] border border-[#E5E2D8] text-xs font-medium text-[#1F3D2B] px-3 py-1 rounded-full flex items-center gap-1.5">
+                  <span>{item}</span>
+                  <button type="button" onClick={() => setHealthConditions(healthConditions.filter((_, i) => i !== idx))} className="hover:text-red-700">
+                    <X size={12} />
+                  </button>
                 </span>
               ))}
             </div>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={newCondition}
-                onChange={(e) => setNewCondition(e.target.value)}
-                placeholder="e.g. Eczema, Seasonal allergies"
-                className="flex-1 px-3 py-2 bg-[#FAF9F5] border border-[#E5E2D8] rounded-xl text-xs"
-              />
-              <button type="button" onClick={handleAddCondition} className="bg-[#1F3D2B] text-white px-3 py-2 rounded-xl text-xs font-bold">
-                Add
-              </button>
+            
+            <div className="relative">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newCondition}
+                  onChange={(e) => {
+                    setNewCondition(e.target.value);
+                    setShowConditionSuggestions(true);
+                  }}
+                  onFocus={() => setShowConditionSuggestions(true)}
+                  placeholder="e.g. Seasonal allergies, Eczema"
+                  className="flex-1 px-3 py-2 bg-[#FAF9F5] border border-[#E5E2D8] rounded-xl text-xs text-[#1F3D2B]"
+                />
+                <button
+                  type="button"
+                  onClick={() => addCondition(newCondition)}
+                  className="bg-[#1F3D2B] text-white px-3 py-2 rounded-xl text-xs font-bold cursor-pointer"
+                >
+                  Add
+                </button>
+              </div>
+
+              {showConditionSuggestions && filteredConditions.length > 0 && (
+                <div className="absolute z-20 left-0 right-12 mt-1 bg-white border border-[#E5E2D8] rounded-xl shadow-lg max-h-40 overflow-y-auto py-1">
+                  {filteredConditions.map((sug, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => addCondition(sug)}
+                      className="w-full text-left px-3 py-1.5 text-xs text-[#1F3D2B] hover:bg-[#FAF9F5]"
+                    >
+                      {sug}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
-          <div>
+          {/* MEDICATIONS */}
+          <div className="relative">
             <label className="block text-xs font-bold uppercase tracking-wider text-[#5F5E5A] mb-1">
-              Current & Previous Medication History
+              CURRENT & PREVIOUS MEDICATION HISTORY
             </label>
             <div className="flex flex-wrap gap-1.5 my-2">
               {medications.map((item, idx) => (
-                <span key={idx} className="bg-[#FAF9F5] border border-[#E5E2D8] text-xs px-2.5 py-1 rounded-lg">
-                  {item}
+                <span key={idx} className="bg-[#FAF9F5] border border-[#E5E2D8] text-xs font-medium text-[#1F3D2B] px-3 py-1 rounded-full flex items-center gap-1.5">
+                  <span>{item}</span>
+                  <button type="button" onClick={() => setMedications(medications.filter((_, i) => i !== idx))} className="hover:text-red-700">
+                    <X size={12} />
+                  </button>
                 </span>
               ))}
             </div>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={newMed}
-                onChange={(e) => setNewMed(e.target.value)}
-                placeholder="e.g. Antihistamines, Topical oils"
-                className="flex-1 px-3 py-2 bg-[#FAF9F5] border border-[#E5E2D8] rounded-xl text-xs"
-              />
-              <button type="button" onClick={handleAddMed} className="bg-[#1F3D2B] text-white px-3 py-2 rounded-xl text-xs font-bold">
-                Add
-              </button>
+            
+            <div className="relative">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newMed}
+                  onChange={(e) => {
+                    setNewMed(e.target.value);
+                    setShowMedSuggestions(true);
+                  }}
+                  onFocus={() => setShowMedSuggestions(true)}
+                  placeholder="e.g. None, Antihistamines"
+                  className="flex-1 px-3 py-2 bg-[#FAF9F5] border border-[#E5E2D8] rounded-xl text-xs text-[#1F3D2B]"
+                />
+                <button
+                  type="button"
+                  onClick={() => addMed(newMed)}
+                  className="bg-[#1F3D2B] text-white px-3 py-2 rounded-xl text-xs font-bold cursor-pointer"
+                >
+                  Add
+                </button>
+              </div>
+
+              {showMedSuggestions && filteredMeds.length > 0 && (
+                <div className="absolute z-20 left-0 right-12 mt-1 bg-white border border-[#E5E2D8] rounded-xl shadow-lg max-h-40 overflow-y-auto py-1">
+                  {filteredMeds.map((sug, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => addMed(sug)}
+                      className="w-full text-left px-3 py-1.5 text-xs text-[#1F3D2B] hover:bg-[#FAF9F5]"
+                    >
+                      {sug}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
+
         </div>
 
         {/* History Notes */}
@@ -394,7 +600,7 @@ export default function ProfilePage() {
         <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-4 border-t border-[#E5E2D8]">
           <button
             type="submit"
-            className="w-full sm:w-auto bg-[#1F3D2B] hover:bg-[#152a1d] text-white px-6 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-xs"
+            className="w-full sm:w-auto bg-[#1F3D2B] hover:bg-[#152a1d] text-white px-6 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-xs cursor-pointer"
           >
             <Save size={16} />
             <span>Save Profile & Allergies</span>
@@ -403,7 +609,7 @@ export default function ProfilePage() {
           <button
             type="button"
             onClick={handleProceedToBaseline}
-            className="w-full sm:w-auto bg-[#D4AF6A] hover:bg-[#c29d59] text-[#1F3D2B] px-6 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-xs"
+            className="w-full sm:w-auto bg-[#D4AF6A] hover:bg-[#c29d59] text-[#1F3D2B] px-6 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-xs cursor-pointer"
           >
             <span>Proceed to Baseline Assessment</span>
             <ArrowRight size={16} />
