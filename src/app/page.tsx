@@ -115,7 +115,7 @@ export default function HomeDashboard() {
               <span>AI-Assisted Scalp Monitoring</span>
             </div>
             <h2 className="font-serif text-2xl sm:text-3xl font-bold tracking-tight text-[#FAF9F5]">
-              Welcome back, {user?.fullName?.split(' ')[0] || 'User'}
+              Welcome, {user?.fullName || 'User'}
             </h2>
             <p className="text-xs sm:text-sm text-[#E5E2D8] mt-1 max-w-xl">
               Currently tracking <strong>{activeProduct?.productName || 'Scalp-Care Routine'}</strong> · Week {currentPeriodAssessments.length || 4} check-in

@@ -173,7 +173,7 @@ export default function SignUpPage() {
     setError('');
     setIsLoading(true);
     try {
-      await setCredentials(loginId, password);
+      await setCredentials(loginId, password, fullName);
       // Once created, redirect back to Sign In page so user logs in with new credentials!
       router.push(`/auth/login?registered=true&loginId=${encodeURIComponent(loginId)}`);
     } catch {

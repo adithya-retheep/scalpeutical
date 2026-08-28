@@ -13,7 +13,7 @@ interface AuthContextType {
   login: (loginId: string, pass: string) => Promise<{ success: boolean; error?: string }>;
   signUpSendOTP: (identifier: string, isEmail: boolean) => Promise<{ verificationId: string; generatedOtp: string }>;
   verifyOTP: (enteredOtp: string, expectedOtp: string) => Promise<boolean>;
-  setCredentials: (loginId: string, pass: string) => Promise<boolean>;
+  setCredentials: (loginId: string, pass: string, fullName?: string) => Promise<boolean>;
   logout: () => void;
   refreshUser: () => void;
   updateProfile: (profile: Partial<UserProfile>) => void;
@@ -100,13 +100,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return false;
   };
 
-  const setCredentials = async (loginId: string, pass: string): Promise<boolean> => {
+  const setCredentials = async (loginId: string, pass: string, fullName?: string): Promise<boolean> => {
     setIsLoading(true);
     await new Promise(res => setTimeout(res, 500));
     
     const newUser: UserProfile = {
       userId: `user_${Math.random().toString(36).substring(2, 9)}`,
-      fullName: 'Scalp Care User',
+      fullName: fullName && fullName.trim().length > 0 ? fullName.trim() : 'Scalp Care User',
       phoneNumber: pendingSignup.identifier || loginId,
       loginId: loginId.trim(),
       profileCompleted: false,
