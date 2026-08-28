@@ -1,0 +1,185 @@
+'use client';
+
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { UserProfile, Product, TrackingPeriod } from '../lib/types';
+import { StorageStore, DEMO_USER } from '../lib/storage-store';
+
+interface AuthContextType {
+  user: UserProfile | null;
+  activeProduct: Product | null;
+  activePeriod: TrackingPeriod | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  login: (loginId: string, pass: string) => Promise<boolean>;
+  demoLogin: () => Promise<boolean>;
+  signUpPhone: (fullName: string, phone: string) => Promise<string>;
+  verifyOTP: (code: string) => Promise<boolean>;
+  setCredentials: (loginId: string, pass: string) => Promise<boolean>;
+  logout: () => void;
+  refreshUser: () => void;
+  updateProfile: (profile: Partial<UserProfile>) => void;
+  completeProfileStep: () => void;
+  completeBaselineStep: () => void;
+}
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [activeProduct, setActiveProduct] = useState<Product | null>(null);
+  const [activePeriod, setActivePeriod] = useState<TrackingPeriod | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  // Temporary signup flow state
+  const [pendingSignup, setPendingSignup] = useState<{ fullName?: string; phone?: string; verificationId?: string }>({});
+
+  const refreshUser = () => {
+    const storedUser = StorageStore.getUser();
+    setUser(storedUser);
+    setIsAuthenticated(Boolean(storedUser));
+
+    if (storedUser) {
+      const period = StorageStore.getActiveTrackingPeriod();
+      setActivePeriod(period);
+      if (period) {
+        const prod = StorageStore.getProductById(period.productId);
+        setActiveProduct(prod);
+      }
+    } else {
+      setActivePeriod(null);
+      setActiveProduct(null);
+    }
+  };
+
+  useEffect(() => {
+    refreshUser();
+    setIsLoading(false);
+  }, []);
+
+  const login = async (loginId: string, pass: string): Promise<boolean> => {
+    setIsLoading(true);
+    await new Promise(res => setTimeout(res, 500));
+    StorageStore.initializeDemoDataIfNeeded();
+    const storedUser = StorageStore.getUser();
+    if (storedUser) {
+      storedUser.loginId = loginId;
+      storedUser.profileCompleted = true;
+      storedUser.baselineCompleted = true;
+      StorageStore.saveUser(storedUser);
+    }
+    refreshUser();
+    setIsLoading(false);
+    return true;
+  };
+
+  const demoLogin = async (): Promise<boolean> => {
+    setIsLoading(true);
+    await new Promise(res => setTimeout(res, 300));
+    StorageStore.initializeDemoDataIfNeeded();
+    refreshUser();
+    setIsLoading(false);
+    return true;
+  };
+
+  const signUpPhone = async (fullName: string, phone: string): Promise<string> => {
+    setIsLoading(true);
+    await new Promise(res => setTimeout(res, 500));
+    const verificationId = `v_${Math.random().toString(36).substring(2, 8)}`;
+    setPendingSignup({ fullName, phone, verificationId });
+    setIsLoading(false);
+    return verificationId;
+  };
+
+  const verifyOTP = async (code: string): Promise<boolean> => {
+    setIsLoading(true);
+    await new Promise(res => setTimeout(res, 400));
+    if (code.length >= 4) {
+      setIsLoading(false);
+      return true;
+    }
+    setIsLoading(false);
+    return false;
+  };
+
+  const setCredentials = async (loginId: string, pass: string): Promise<boolean> => {
+    setIsLoading(true);
+    await new Promise(res => setTimeout(res, 500));
+    // NEW USER -> profileCompleted: false, baselineCompleted: false
+    const newUser: UserProfile = {
+      userId: `user_${Math.random().toString(36).substring(2, 9)}`,
+      fullName: pendingSignup.fullName || 'New User',
+      phoneNumber: pendingSignup.phone || '+910000000000',
+      loginId: loginId,
+      profileCompleted: false,
+      baselineCompleted: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    StorageStore.saveUser(newUser);
+    refreshUser();
+    setIsLoading(false);
+    return true;
+  };
+
+  const logout = () => {
+    localStorage.removeItem('scalpeutical_user');
+    setUser(null);
+    setIsAuthenticated(false);
+    setActivePeriod(null);
+    setActiveProduct(null);
+  };
+
+  const updateProfile = (profileData: Partial<UserProfile>) => {
+    if (!user) return;
+    const updated = { ...user, ...profileData, updatedAt: new Date().toISOString() };
+    StorageStore.saveUser(updated);
+    setUser(updated);
+  };
+
+  const completeProfileStep = () => {
+    if (!user) return;
+    const updated = { ...user, profileCompleted: true, updatedAt: new Date().toISOString() };
+    StorageStore.saveUser(updated);
+    setUser(updated);
+  };
+
+  const completeBaselineStep = () => {
+    if (!user) return;
+    const updated = { ...user, baselineCompleted: true, updatedAt: new Date().toISOString() };
+    StorageStore.saveUser(updated);
+    setUser(updated);
+  };
+
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        activeProduct,
+        activePeriod,
+        isAuthenticated,
+        isLoading,
+        login,
+        demoLogin,
+        signUpPhone,
+        verifyOTP,
+        setCredentials,
+        logout,
+        refreshUser,
+        updateProfile,
+        completeProfileStep,
+        completeBaselineStep,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+}
