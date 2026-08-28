@@ -1,0 +1,9 @@
+{
+  "appId": "app.scalpeutical.mobile",
+  "appName": "Scalpeutical",
+  "webDir": "out",
+  "server": {
+    "url": "https://scalpeutical.vercel.app",
+    "cleartext": true
+  }
+}
