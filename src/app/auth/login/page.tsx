@@ -5,7 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '../../../context/auth-context';
-import { Lock, User, ArrowRight, ShieldCheck, AlertCircle, CheckCircle } from 'lucide-react';
+import { Lock, User, ArrowRight, ShieldCheck, AlertCircle, CheckCircle, LogIn, UserPlus, Home } from 'lucide-react';
 
 function LoginForm() {
   const [loginId, setLoginId] = useState('');
@@ -15,7 +15,7 @@ function LoginForm() {
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { login } = useAuth();
+  const { login, user } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -60,8 +60,35 @@ function LoginForm() {
   };
 
   return (
-    <div className="max-w-md w-full bg-white border border-[#E5E2D8] rounded-3xl p-6 sm:p-8 shadow-sm space-y-6 animate-in fade-in duration-300">
+    <div className="max-w-md w-full bg-white border border-[#E5E2D8] rounded-3xl p-6 sm:p-8 shadow-md space-y-6 animate-in fade-in duration-300">
       
+      {/* App Model Unified Navigation Segment Control */}
+      <div className="flex bg-[#FAF9F5] p-1 rounded-2xl border border-[#E5E2D8] text-xs font-bold">
+        <button
+          type="button"
+          className="flex-1 py-2.5 rounded-xl bg-[#1F3D2B] text-white shadow-2xs flex items-center justify-center gap-1.5 cursor-default"
+        >
+          <LogIn size={15} />
+          <span>Sign In</span>
+        </button>
+        <Link
+          href="/auth/signup"
+          className="flex-1 py-2.5 rounded-xl text-[#5F5E5A] hover:text-[#1F3D2B] hover:bg-white/60 transition-all flex items-center justify-center gap-1.5"
+        >
+          <UserPlus size={15} />
+          <span>Register</span>
+        </Link>
+        {user && (
+          <Link
+            href="/"
+            className="flex-1 py-2.5 rounded-xl text-[#3B6D11] hover:bg-[#EAF0E7] transition-all flex items-center justify-center gap-1.5 font-extrabold"
+          >
+            <Home size={15} />
+            <span>Home</span>
+          </Link>
+        )}
+      </div>
+
       {/* Header Logo & Title */}
       <div className="text-center space-y-2">
         <div className="w-16 h-16 rounded-full border-2 border-[#D4AF6A]/40 overflow-hidden mx-auto bg-white shadow-2xs p-1">
@@ -74,9 +101,9 @@ function LoginForm() {
             priority
           />
         </div>
-        <h2 className="font-serif text-2xl font-bold text-[#1F3D2B]">Sign In</h2>
+        <h2 className="font-serif text-2xl font-bold text-[#1F3D2B]">Sign In to Portal</h2>
         <p className="text-xs text-[#8A8A82]">
-          Sign in to access your digital scalp monitoring portal
+          Enter your registered Login ID & password
         </p>
       </div>
 
@@ -164,7 +191,7 @@ function LoginForm() {
         <p className="text-xs text-[#5F5E5A]">
           New to Scalpeutical?{' '}
           <Link href="/auth/signup" className="text-[#1F3D2B] font-bold underline hover:text-[#3B6D11]">
-            Register
+            Register Account
           </Link>
         </p>
       </div>

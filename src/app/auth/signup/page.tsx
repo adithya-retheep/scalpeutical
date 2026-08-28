@@ -5,7 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../../context/auth-context';
-import { Phone, Mail, User, Lock, KeyRound, ArrowRight, CheckCircle, RefreshCw, ShieldCheck, AlertCircle, ChevronDown, BellRing, Copy, Sparkles, MessageSquare } from 'lucide-react';
+import { Phone, Mail, User, Lock, KeyRound, ArrowRight, CheckCircle, RefreshCw, ShieldCheck, AlertCircle, ChevronDown, BellRing, Copy, Sparkles, MessageSquare, LogIn, UserPlus } from 'lucide-react';
 
 interface CountryConfig {
   code: string;
@@ -255,7 +255,25 @@ export default function SignUpPage() {
         </div>
       )}
 
-      <div className="max-w-md w-full bg-white border border-[#E5E2D8] rounded-3xl p-6 sm:p-8 shadow-sm space-y-6">
+      <div className="max-w-md w-full bg-white border border-[#E5E2D8] rounded-3xl p-6 sm:p-8 shadow-md space-y-6">
+        
+        {/* App Model Unified Navigation Segment Control */}
+        <div className="flex bg-[#FAF9F5] p-1 rounded-2xl border border-[#E5E2D8] text-xs font-bold">
+          <Link
+            href="/auth/login"
+            className="flex-1 py-2.5 rounded-xl text-[#5F5E5A] hover:text-[#1F3D2B] hover:bg-white/60 transition-all flex items-center justify-center gap-1.5"
+          >
+            <LogIn size={15} />
+            <span>Sign In</span>
+          </Link>
+          <button
+            type="button"
+            className="flex-1 py-2.5 rounded-xl bg-[#1F3D2B] text-white shadow-2xs flex items-center justify-center gap-1.5 cursor-default"
+          >
+            <UserPlus size={15} />
+            <span>Register</span>
+          </button>
+        </div>
         
         {/* Header Logo & Title */}
         <div className="text-center space-y-2">
