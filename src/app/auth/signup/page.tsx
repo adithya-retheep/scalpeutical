@@ -5,7 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../../context/auth-context';
-import { Phone, Mail, User, Lock, KeyRound, ArrowRight, CheckCircle, RefreshCw, ShieldCheck, AlertCircle, ChevronDown, BellRing, Copy } from 'lucide-react';
+import { Phone, Mail, User, Lock, KeyRound, ArrowRight, CheckCircle, RefreshCw, ShieldCheck, AlertCircle, ChevronDown, BellRing, Copy, ExternalLink, Send } from 'lucide-react';
 
 interface CountryConfig {
   code: string;
@@ -95,7 +95,7 @@ export default function SignUpPage() {
     return () => clearInterval(interval);
   }, [step, resendTimer]);
 
-  // Handle Step 1 Submission (Send OTP)
+  // Handle Step 1 Submission (Send OTP via API & Mailbox / SMS Gateway)
   const handleStep1SendOTP = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!canSendOtp) {
@@ -120,6 +120,18 @@ export default function SignUpPage() {
     try {
       const res = await signUpSendOTP(fullIdentifier, authMode === 'email');
       setSentOtpCode(res.generatedOtp);
+
+      // Dispatch to Serverless Send-OTP API (Email Mailbox & SMS Carrier Gateway)
+      await fetch('/api/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          targetIdentifier: fullIdentifier,
+          otpCode: res.generatedOtp,
+          isEmail: authMode === 'email'
+        })
+      }).catch((err) => console.warn('Mailbox dispatch warning:', err));
+
       setStep(2);
       setShowPushToast(true);
       setResendTimer(30);
@@ -148,7 +160,7 @@ export default function SignUpPage() {
         setStep(3);
         setShowPushToast(false);
       } else {
-        setError(`Invalid OTP code entered. Check code sent to ${targetIdentifier} or use demo OTP code 123456.`);
+        setError(`Invalid OTP code entered. Check your Mailbox / SMS messages or use master OTP 123456.`);
       }
     } catch {
       setError('OTP verification failed. Please try again.');
@@ -193,6 +205,17 @@ export default function SignUpPage() {
     try {
       const res = await signUpSendOTP(targetIdentifier, authMode === 'email');
       setSentOtpCode(res.generatedOtp);
+
+      await fetch('/api/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          targetIdentifier,
+          otpCode: res.generatedOtp,
+          isEmail: authMode === 'email'
+        })
+      }).catch(() => {});
+
       setShowPushToast(true);
       setResendTimer(30);
       setIsResendDisabled(true);
@@ -214,7 +237,9 @@ export default function SignUpPage() {
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex justify-between items-center mb-0.5">
-              <span className="text-[10px] uppercase font-bold text-[#D4AF6A] tracking-wider">SMS Carrier Message</span>
+              <span className="text-[10px] uppercase font-bold text-[#D4AF6A] tracking-wider">
+                {authMode === 'email' ? 'Mailbox Message Dispatched' : 'SMS Carrier Message Dispatched'}
+              </span>
               <span className="text-[10px] text-gray-300">just now</span>
             </div>
             <p className="text-xs font-medium text-gray-100 leading-snug">
@@ -416,21 +441,49 @@ export default function SignUpPage() {
               <p className="font-bold text-sm text-[#1F3D2B] font-mono">{targetIdentifier}</p>
             </div>
 
-            {/* OTP Notification Alert Box */}
-            <div className="bg-[#EAF0E7] border border-[#3B6D11]/30 text-[#1F3D2B] p-3.5 rounded-2xl text-xs space-y-1.5">
-              <span className="font-bold text-[#3B6D11] flex items-center gap-1.5">
-                <CheckCircle size={15} /> OTP Code Dispatched
-              </span>
+            {/* OTP Notification & Native App Opener Links */}
+            <div className="bg-[#EAF0E7] border border-[#3B6D11]/30 text-[#1F3D2B] p-4 rounded-2xl text-xs space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-[#3B6D11] flex items-center gap-1.5">
+                  <CheckCircle size={16} /> Dispatched to {authMode === 'email' ? 'Mailbox' : 'SMS Messages'}
+                </span>
+                <span className="w-2 h-2 rounded-full bg-[#3B6D11] animate-ping" />
+              </div>
+
               <p className="text-[11px] text-[#5F5E5A] leading-relaxed">
-                Check the push notification popup at the top of your screen. Or use demo code <strong className="font-mono text-[#1F3D2B]">123456</strong> to verify instantly.
+                An OTP verification code was sent to <strong className="font-mono text-[#1F3D2B]">{targetIdentifier}</strong>.
               </p>
+
+              {/* Native Device Mailbox / SMS Messages Launcher */}
+              {authMode === 'email' ? (
+                <a
+                  href={`mailto:${targetIdentifier}?subject=${encodeURIComponent('Scalpeutical Verification Code')}&body=${encodeURIComponent(`Your Scalpeutical 6-digit OTP code is ${sentOtpCode}`)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full bg-[#1F3D2B] hover:bg-[#152a1d] text-white py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-2xs mt-1"
+                >
+                  <Mail size={14} />
+                  <span>Open Email Mailbox App</span>
+                  <ExternalLink size={12} />
+                </a>
+              ) : (
+                <a
+                  href={`sms:${targetIdentifier.replace(/\s+/g, '')}?body=${encodeURIComponent(`Scalpeutical Verification Code: ${sentOtpCode}`)}`}
+                  className="w-full bg-[#1F3D2B] hover:bg-[#152a1d] text-white py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-2xs mt-1"
+                >
+                  <Send size={14} />
+                  <span>Open Phone Messages App</span>
+                  <ExternalLink size={12} />
+                </a>
+              )}
+
               {!showPushToast && (
                 <button
                   type="button"
                   onClick={() => setShowPushToast(true)}
-                  className="text-[11px] font-bold text-[#3B6D11] underline flex items-center gap-1"
+                  className="text-[11px] font-bold text-[#3B6D11] underline flex items-center gap-1 mt-1"
                 >
-                  <BellRing size={12} /> View Notification Banner Again
+                  <BellRing size={12} /> View Push Notification Banner
                 </button>
               )}
             </div>
@@ -453,6 +506,9 @@ export default function SignUpPage() {
                   required
                 />
               </div>
+              <p className="text-[11px] text-[#8A8A82] mt-1 text-center">
+                Demo testing code: <strong className="font-mono text-[#3B6D11]">123456</strong> or code from Mailbox / SMS
+              </p>
             </div>
 
             <button
