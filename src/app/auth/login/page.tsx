@@ -5,14 +5,14 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../../context/auth-context';
-import { Lock, User, ArrowRight, ShieldCheck, AlertCircle, Sparkles } from 'lucide-react';
+import { Lock, User, ArrowRight, ShieldCheck, AlertCircle } from 'lucide-react';
 
 export default function LoginPage() {
   const [loginId, setLoginId] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { login, demoLogin } = useAuth();
+  const { login } = useAuth();
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -36,12 +36,6 @@ export default function LoginPage() {
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  const handleDemoSignIn = async () => {
-    setIsSubmitting(true);
-    await demoLogin();
-    router.push('/');
   };
 
   return (
@@ -75,7 +69,7 @@ export default function LoginPage() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-[#5F5E5A] mb-1">
-              Login ID / Mobile Identifier
+              Login ID
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#8A8A82]">
@@ -85,7 +79,7 @@ export default function LoginPage() {
                 type="text"
                 value={loginId}
                 onChange={(e) => setLoginId(e.target.value)}
-                placeholder="e.g. adithya@scalpeutical.app"
+                placeholder="type here"
                 className="w-full pl-10 pr-4 py-3 bg-[#FAF9F5] border border-[#E5E2D8] rounded-xl text-sm font-medium text-[#1F3D2B] focus:outline-none focus:border-[#1F3D2B] focus:ring-1 focus:ring-[#1F3D2B]"
               />
             </div>
@@ -127,24 +121,11 @@ export default function LoginPage() {
           </button>
         </form>
 
-        {/* Demo Returning User Quick Access */}
-        <div className="pt-2">
-          <button
-            type="button"
-            onClick={handleDemoSignIn}
-            disabled={isSubmitting}
-            className="w-full bg-[#FAF9F5] hover:bg-[#F1EFE8] border border-[#E5E2D8] text-[#1F3D2B] py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all"
-          >
-            <Sparkles size={14} className="text-[#D4AF6A]" />
-            <span>Sign In as Returning User (Demo Account)</span>
-          </button>
-        </div>
-
         <div className="pt-4 border-t border-[#E5E2D8] text-center space-y-2">
           <p className="text-xs text-[#5F5E5A]">
             New to Scalpeutical?{' '}
             <Link href="/auth/signup" className="text-[#1F3D2B] font-bold underline hover:text-[#3B6D11]">
-              Register Mobile Number (New User Flow)
+              Register
             </Link>
           </p>
         </div>
