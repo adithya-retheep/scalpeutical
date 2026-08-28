@@ -376,13 +376,13 @@ export default function SignUpPage() {
               <p className="font-bold text-sm text-[#1F3D2B] font-mono">{targetIdentifier}</p>
             </div>
 
-            {/* Verification OTP Display Alert for Testing */}
-            <div className="bg-[#EAF0E7] border border-[#3B6D11]/30 text-[#1F3D2B] p-3 rounded-xl text-xs space-y-1">
-              <span className="font-bold text-[#3B6D11] block flex items-center gap-1">
-                <CheckCircle size={14} /> OTP Generated & Sent Successfully
+            {/* Secure OTP Dispatch Confirmation (OTP code NOT shown on screen) */}
+            <div className="bg-[#EAF0E7] border border-[#3B6D11]/30 text-[#1F3D2B] p-3.5 rounded-2xl text-xs space-y-1">
+              <span className="font-bold text-[#3B6D11] flex items-center gap-1.5">
+                <CheckCircle size={15} /> OTP Code Sent Successfully
               </span>
-              <p className="text-[11px]">
-                Enter your received OTP code: <strong className="font-mono text-base text-[#3B6D11]">{sentOtpCode}</strong>
+              <p className="text-[11px] text-[#5F5E5A]">
+                A fresh 6-digit verification code has been sent to <strong className="font-mono text-[#1F3D2B]">{targetIdentifier}</strong>. Please enter the code received on your phone or email.
               </p>
             </div>
 
