@@ -5,7 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../../context/auth-context';
-import { Phone, Mail, User, Lock, KeyRound, ArrowRight, CheckCircle, RefreshCw, ShieldCheck, AlertCircle, ChevronDown, BellRing, Copy, ExternalLink, Send } from 'lucide-react';
+import { Phone, Mail, User, Lock, KeyRound, ArrowRight, CheckCircle, RefreshCw, ShieldCheck, AlertCircle, ChevronDown, BellRing, Copy, Sparkles, MessageSquare } from 'lucide-react';
 
 interface CountryConfig {
   code: string;
@@ -40,10 +40,10 @@ export default function SignUpPage() {
   const [phoneDigits, setPhoneDigits] = useState('');
   const [emailInput, setEmailInput] = useState('');
 
-  // Generated OTP state & SMS Push Banner State
+  // Generated OTP state & Pop-Up Modal State
   const [sentOtpCode, setSentOtpCode] = useState('');
   const [targetIdentifier, setTargetIdentifier] = useState('');
-  const [showPushToast, setShowPushToast] = useState(false);
+  const [showOtpModal, setShowOtpModal] = useState(false);
 
   // Step 2 State (OTP)
   const [otpCode, setOtpCode] = useState('');
@@ -95,7 +95,7 @@ export default function SignUpPage() {
     return () => clearInterval(interval);
   }, [step, resendTimer]);
 
-  // Handle Step 1 Submission (Send OTP via API & Mailbox / SMS Gateway)
+  // Handle Step 1 Submission (Send OTP & Open Pop-Up Modal)
   const handleStep1SendOTP = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!canSendOtp) {
@@ -120,20 +120,8 @@ export default function SignUpPage() {
     try {
       const res = await signUpSendOTP(fullIdentifier, authMode === 'email');
       setSentOtpCode(res.generatedOtp);
-
-      // Dispatch to Serverless Send-OTP API (Email Mailbox & SMS Carrier Gateway)
-      await fetch('/api/send-otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          targetIdentifier: fullIdentifier,
-          otpCode: res.generatedOtp,
-          isEmail: authMode === 'email'
-        })
-      }).catch((err) => console.warn('Mailbox dispatch warning:', err));
-
       setStep(2);
-      setShowPushToast(true);
+      setShowOtpModal(true); // Open Pop-Up Message Modal!
       setResendTimer(30);
       setIsResendDisabled(true);
     } catch {
@@ -147,7 +135,7 @@ export default function SignUpPage() {
   const handleStep2VerifyOTP = async (e: React.FormEvent) => {
     e.preventDefault();
     if (otpCode.length < 4) {
-      setError('Please enter the 6-digit OTP code sent to your device.');
+      setError('Please enter the 6-digit OTP code.');
       return;
     }
     setError('');
@@ -158,7 +146,7 @@ export default function SignUpPage() {
       if (isValid) {
         setLoginId(targetIdentifier);
         setStep(3);
-        setShowPushToast(false);
+        setShowOtpModal(false);
       } else {
         setError(`Invalid OTP code entered. Please check the code sent to ${targetIdentifier}.`);
       }
@@ -205,18 +193,7 @@ export default function SignUpPage() {
     try {
       const res = await signUpSendOTP(targetIdentifier, authMode === 'email');
       setSentOtpCode(res.generatedOtp);
-
-      await fetch('/api/send-otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          targetIdentifier,
-          otpCode: res.generatedOtp,
-          isEmail: authMode === 'email'
-        })
-      }).catch(() => {});
-
-      setShowPushToast(true);
+      setShowOtpModal(true); // Open Pop-Up Message Modal again!
       setResendTimer(30);
       setIsResendDisabled(true);
     } catch {
@@ -229,7 +206,54 @@ export default function SignUpPage() {
   return (
     <div className="min-h-[85vh] flex items-center justify-center py-6 px-4 relative">
       
+      {/* POP-UP MESSAGE MODAL DIALOG */}
+      {showOtpModal && (
+        <div className="fixed inset-0 bg-black/65 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white border border-[#E5E2D8] rounded-3xl p-6 sm:p-8 max-w-sm w-full shadow-2xl text-center space-y-5 animate-in zoom-in-95 duration-200">
+            
+            <div className="w-14 h-14 rounded-full bg-[#EAF0E7] border border-[#3B6D11]/30 text-[#3B6D11] flex items-center justify-center mx-auto text-2xl shadow-2xs">
+              💬
+            </div>
 
+            <div className="space-y-1">
+              <h3 className="font-serif text-xl font-bold text-[#1F3D2B]">OTP Code Message</h3>
+              <p className="text-xs text-[#5F5E5A]">
+                Verification code dispatched for <strong className="font-mono text-[#1F3D2B]">{targetIdentifier}</strong>
+              </p>
+            </div>
+
+            <div className="bg-[#FAF9F5] border border-[#E5E2D8] p-4 rounded-2xl space-y-1">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-[#8A8A82]">Your 6-Digit OTP Code</span>
+              <div className="font-mono text-3xl font-extrabold tracking-widest text-[#3B6D11]">
+                {sentOtpCode}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setOtpCode(sentOtpCode);
+                  setShowOtpModal(false);
+                }}
+                className="w-full bg-[#1F3D2B] hover:bg-[#152a1d] text-white py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 shadow-xs transition-all cursor-pointer"
+              >
+                <span>Auto-Fill Code & Continue</span>
+                <ArrowRight size={16} />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowOtpModal(false)}
+                className="w-full py-2 text-xs font-semibold text-[#8A8A82] hover:text-[#5F5E5A]"
+              >
+                Close Pop-Up
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
 
       <div className="max-w-md w-full bg-white border border-[#E5E2D8] rounded-3xl p-6 sm:p-8 shadow-sm space-y-6">
         
@@ -406,12 +430,20 @@ export default function SignUpPage() {
               <p className="font-bold text-sm text-[#1F3D2B] font-mono">{targetIdentifier}</p>
             </div>
 
-
-
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-[#5F5E5A] mb-1">
-                Enter 6-Digit OTP Code
-              </label>
+              <div className="flex justify-between items-center mb-1">
+                <label className="block text-xs font-bold uppercase tracking-wider text-[#5F5E5A]">
+                  Enter 6-Digit OTP Code
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setShowOtpModal(true)}
+                  className="text-xs text-[#3B6D11] font-bold hover:underline flex items-center gap-1"
+                >
+                  <MessageSquare size={12} /> View Pop-Up Message
+                </button>
+              </div>
+
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#8A8A82]">
                   <KeyRound size={18} />
