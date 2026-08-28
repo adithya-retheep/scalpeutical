@@ -5,33 +5,46 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../../context/auth-context';
-import { Phone, Mail, User, Lock, KeyRound, ArrowRight, CheckCircle, RefreshCw, Globe, ShieldCheck, AlertCircle } from 'lucide-react';
+import { Phone, Mail, User, Lock, KeyRound, ArrowRight, CheckCircle, RefreshCw, ShieldCheck, AlertCircle, ChevronDown, Globe } from 'lucide-react';
 
-const COUNTRIES = [
-  { flag: '🇮🇳', name: 'India', code: '+91' },
-  { flag: '🇦🇪', name: 'UAE', code: '+971' },
-  { flag: '🇺🇸', name: 'USA', code: '+1' },
-  { flag: '🇬🇧', name: 'UK', code: '+44' },
-  { flag: '🇸🇬', name: 'Singapore', code: '+65' },
-  { flag: '🇨🇦', name: 'Canada', code: '+1' },
-  { flag: '🇦🇺', name: 'Australia', code: '+61' },
-  { flag: '🇸🇦', name: 'Saudi Arabia', code: '+966' },
+interface CountryConfig {
+  code: string;
+  flag: string;
+  name: string;
+  dialCode: string;
+  digits: number;
+}
+
+const COUNTRIES: CountryConfig[] = [
+  { code: 'IN', flag: '🇮🇳', name: 'India', dialCode: '+91', digits: 10 },
+  { code: 'AE', flag: '🇦🇪', name: 'United Arab Emirates', dialCode: '+971', digits: 9 },
+  { code: 'US', flag: '🇺🇸', name: 'United States', dialCode: '+1', digits: 10 },
+  { code: 'GB', flag: '🇬🇧', name: 'United Kingdom', dialCode: '+44', digits: 10 },
+  { code: 'SA', flag: '🇸🇦', name: 'Saudi Arabia', dialCode: '+966', digits: 9 },
+  { code: 'QA', flag: '🇶🇦', name: 'Qatar', dialCode: '+974', digits: 8 },
+  { code: 'OM', flag: '🇴🇲', name: 'Oman', dialCode: '+968', digits: 8 },
+  { code: 'KW', flag: '🇰🇼', name: 'Kuwait', dialCode: '+965', digits: 8 },
+  { code: 'BH', flag: '🇧🇭', name: 'Bahrain', dialCode: '+973', digits: 8 },
+  { code: 'SG', flag: '🇸🇬', name: 'Singapore', dialCode: '+65', digits: 8 },
 ];
 
 export default function SignUpPage() {
   const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [authMethod, setAuthMethod] = useState<'email' | 'mobile'>('email');
+  const [authMode, setAuthMode] = useState<'phone' | 'email'>('phone');
 
-  // Step 1 State
+  // Country Selection (Defaults to India +91)
+  const [selectedCountry, setSelectedCountry] = useState<CountryConfig>(COUNTRIES[0]);
+
+  // Step 1 Inputs
   const [fullName, setFullName] = useState('');
-  const [emailAddress, setEmailAddress] = useState('');
-  const [countryCode, setCountryCode] = useState('+91'); // Default India (+91)
-  const [phoneNumber, setPhoneNumber] = useState('');
+  const [phoneDigits, setPhoneDigits] = useState('');
+  const [emailInput, setEmailInput] = useState('');
 
-  // Sent OTP State
-  const [generatedOtp, setGeneratedOtp] = useState('');
+  // Generated OTP state
+  const [sentOtpCode, setSentOtpCode] = useState('');
+  const [targetIdentifier, setTargetIdentifier] = useState('');
 
-  // Step 2 State (OTP Input)
+  // Step 2 State (OTP)
   const [otpCode, setOtpCode] = useState('');
   const [resendTimer, setResendTimer] = useState(30);
   const [isResendDisabled, setIsResendDisabled] = useState(true);
@@ -42,16 +55,31 @@ export default function SignUpPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
 
   const [error, setError] = useState('');
-  const [infoMessage, setInfoMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const { setCredentials } = useAuth();
+  const { signUpSendOTP, verifyOTP, setCredentials } = useAuth();
   const router = useRouter();
 
+  // Handle phone digits change according to chosen flag format
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/\D/g, '');
+    if (raw.length <= selectedCountry.digits) {
+      setPhoneDigits(raw);
+    }
+  };
+
+  // Switch country flag and reset phone digits
+  const handleCountryChange = (countryCode: string) => {
+    const found = COUNTRIES.find((c) => c.code === countryCode) || COUNTRIES[0];
+    setSelectedCountry(found);
+    setPhoneDigits('');
+    setError('');
+  };
+
   // Validation Checkers
-  const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailAddress.trim());
-  const isValidPhone = phoneNumber.trim().replace(/\D/g, '').length >= 7;
-  const isInputValid = authMethod === 'email' ? isValidEmail : isValidPhone;
+  const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailInput.trim());
+  const isPhoneValid = phoneDigits.length === selectedCountry.digits;
+  const canSendOtp = authMode === 'email' ? isEmailValid : (isPhoneValid && fullName.trim().length > 0);
 
   // Timer countdown effect for OTP resend
   useEffect(() => {
@@ -66,117 +94,146 @@ export default function SignUpPage() {
     return () => clearInterval(interval);
   }, [step, resendTimer]);
 
-  // Generate & Send OTP
-  const sendOtpCode = () => {
-    const newOtp = Math.floor(100000 + Math.random() * 900000).toString();
-    setGeneratedOtp(newOtp);
-    const target = authMethod === 'email' ? emailAddress : `${countryCode} ${phoneNumber}`;
-    setInfoMessage(`OTP Code sent to ${target}: ${newOtp}`);
-  };
-
   // Handle Step 1 Submission (Send OTP)
-  const handleStep1 = async (e: React.FormEvent) => {
+  const handleStep1SendOTP = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!fullName) {
-      setError('Please enter your full name.');
-      return;
-    }
-    if (!isInputValid) {
-      setError(
-        authMethod === 'email'
-          ? 'Please enter a valid email address (e.g. username@gmail.com).'
-          : 'Please enter a valid mobile number.'
-      );
+    if (!canSendOtp) {
+      if (authMode === 'email') {
+        setError('Please enter a valid email address (e.g. username@gmail.com).');
+      } else {
+        setError(`Please enter exactly ${selectedCountry.digits} digits for ${selectedCountry.name} (${selectedCountry.dialCode}).`);
+      }
       return;
     }
 
     setError('');
     setIsLoading(true);
+
+    const fullIdentifier =
+      authMode === 'email'
+        ? emailInput.trim()
+        : `${selectedCountry.dialCode} ${phoneDigits.trim()}`;
+
+    setTargetIdentifier(fullIdentifier);
+
     try {
-      sendOtpCode();
+      const res = await signUpSendOTP(fullIdentifier, authMode === 'email');
+      setSentOtpCode(res.generatedOtp);
       setStep(2);
       setResendTimer(30);
       setIsResendDisabled(true);
     } catch {
-      setError('Failed to send OTP verification code.');
+      setError('Failed to send verification OTP code. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Handle Step 2 Submission (Verify OTP)
-  const handleStep2 = async (e: React.FormEvent) => {
+  // Handle Step 2 Submission (OTP Verification)
+  const handleStep2VerifyOTP = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (otpCode.trim() !== generatedOtp && otpCode.trim() !== '123456') {
-      setError(`Incorrect OTP code. Please enter the exact 6-digit code sent (${generatedOtp}).`);
+    if (otpCode.length < 4) {
+      setError('Please enter the 6-digit OTP code sent to your ' + (authMode === 'email' ? 'email' : 'mobile number') + '.');
       return;
     }
-
     setError('');
-    setInfoMessage('');
     setIsLoading(true);
+
     try {
-      const assignedId = authMethod === 'email' ? emailAddress : `${countryCode}${phoneNumber}`;
-      setLoginId(assignedId);
-      setStep(3);
+      const isValid = await verifyOTP(otpCode, sentOtpCode);
+      if (isValid) {
+        setLoginId(targetIdentifier);
+        setStep(3);
+      } else {
+        setError(`Invalid OTP code entered. Please check the code sent to ${targetIdentifier}.`);
+      }
     } catch {
-      setError('OTP verification failed.');
+      setError('OTP verification failed. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Handle Step 3 Submission (Set Password)
-  const handleStep3 = async (e: React.FormEvent) => {
+  // Handle Step 3 Submission (Set Credentials)
+  const handleStep3SetCredentials = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!loginId || !password) {
       setError('Please provide both Login ID and Password.');
+      return;
+    }
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters.');
       return;
     }
     if (password !== confirmPassword) {
       setError('Passwords do not match.');
       return;
     }
+
     setError('');
     setIsLoading(true);
     try {
       await setCredentials(loginId, password);
-      router.push('/profile'); // Proceed to Profile Setup
+      // New user auto-diverts to Profile Setup -> Baseline Assessment -> Dashboard
+      router.push('/profile');
     } catch {
-      setError('Failed to create account credentials.');
+      setError('Failed to complete registration.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleResendOTP = () => {
-    sendOtpCode();
-    setResendTimer(30);
-    setIsResendDisabled(true);
+  const handleResendOTP = async () => {
+    if (isResendDisabled) return;
+    setIsLoading(true);
+    setError('');
+    try {
+      const res = await signUpSendOTP(targetIdentifier, authMode === 'email');
+      setSentOtpCode(res.generatedOtp);
+      setResendTimer(30);
+      setIsResendDisabled(true);
+    } catch {
+      setError('Failed to resend OTP.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
     <div className="min-h-[85vh] flex items-center justify-center py-6 px-4">
       <div className="max-w-md w-full bg-white border border-[#E5E2D8] rounded-3xl p-6 sm:p-8 shadow-sm space-y-6">
         
-        {/* Header Branding */}
+        {/* Header Logo & Title */}
         <div className="text-center space-y-2">
-          <div className="w-14 h-14 rounded-full border border-[#D4AF6A]/40 overflow-hidden mx-auto bg-white p-1">
-            <Image src="/logo.jpeg" alt="Logo" width={56} height={56} className="object-cover w-full h-full rounded-full" />
+          <div className="w-16 h-16 rounded-full border-2 border-[#D4AF6A]/40 overflow-hidden mx-auto bg-white shadow-2xs p-1">
+            <Image
+              src="/logo.jpeg"
+              alt="Scalpeutical Logo"
+              width={64}
+              height={64}
+              className="object-cover w-full h-full rounded-full"
+            />
           </div>
-          <h2 className="font-serif text-2xl font-bold text-[#1F3D2B]">Create Account</h2>
+          <h2 className="font-serif text-2xl font-bold text-[#1F3D2B]">Create Your Account</h2>
           <p className="text-xs text-[#8A8A82]">
-            Step {step} of 3 — {step === 1 ? 'Verification Setup' : step === 2 ? 'OTP Verification' : 'Set Password'}
+            Register to start tracking your scalp-care journey
           </p>
         </div>
 
-        {/* Multi-step Stepper Indicator */}
-        <div className="flex items-center justify-between px-6">
-          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${step >= 1 ? 'bg-[#1F3D2B] text-white' : 'bg-[#FAF9F5] text-[#8A8A82] border border-[#E5E2D8]'}`}>1</div>
-          <div className={`flex-1 h-0.5 mx-2 ${step >= 2 ? 'bg-[#1F3D2B]' : 'bg-[#E5E2D8]'}`}></div>
-          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${step >= 2 ? 'bg-[#1F3D2B] text-white' : 'bg-[#FAF9F5] text-[#8A8A82] border border-[#E5E2D8]'}`}>2</div>
-          <div className={`flex-1 h-0.5 mx-2 ${step >= 3 ? 'bg-[#1F3D2B]' : 'bg-[#E5E2D8]'}`}></div>
-          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${step >= 3 ? 'bg-[#1F3D2B] text-white' : 'bg-[#FAF9F5] text-[#8A8A82] border border-[#E5E2D8]'}`}>3</div>
+        {/* 3-Step Progress Indicator */}
+        <div className="flex items-center justify-between border-b border-[#E5E2D8] pb-4 text-xs font-bold">
+          <div className={`flex items-center gap-1.5 ${step >= 1 ? 'text-[#1F3D2B]' : 'text-[#8A8A82]'}`}>
+            <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${step >= 1 ? 'bg-[#1F3D2B] text-white' : 'bg-gray-200'}`}>1</span>
+            <span>Register</span>
+          </div>
+          <div className={`flex items-center gap-1.5 ${step >= 2 ? 'text-[#1F3D2B]' : 'text-[#8A8A82]'}`}>
+            <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${step >= 2 ? 'bg-[#1F3D2B] text-white' : 'bg-gray-200'}`}>2</span>
+            <span>OTP Verify</span>
+          </div>
+          <div className={`flex items-center gap-1.5 ${step >= 3 ? 'text-[#1F3D2B]' : 'text-[#8A8A82]'}`}>
+            <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${step >= 3 ? 'bg-[#1F3D2B] text-white' : 'bg-gray-200'}`}>3</span>
+            <span>Password</span>
+          </div>
         </div>
 
         {error && (
@@ -186,38 +243,31 @@ export default function SignUpPage() {
           </div>
         )}
 
-        {infoMessage && (
-          <div className="bg-[#EAF0E7] border border-[#3B6D11]/30 text-[#3B6D11] p-3.5 rounded-xl text-xs font-bold flex items-center gap-2">
-            <CheckCircle size={16} className="shrink-0" />
-            <span>{infoMessage}</span>
-          </div>
-        )}
-
-        {/* STEP 1: Email or Mobile Number Registration */}
+        {/* STEP 1: Registration with Country Flag Selector & Validation */}
         {step === 1 && (
-          <form onSubmit={handleStep1} className="space-y-4">
+          <form onSubmit={handleStep1SendOTP} className="space-y-4">
             
-            {/* Method Toggle */}
-            <div className="flex bg-[#FAF9F5] p-1 rounded-xl border border-[#E5E2D8]">
+            {/* Mode Selector (Mobile Number vs Email) */}
+            <div className="flex bg-[#FAF9F5] p-1 rounded-xl border border-[#E5E2D8] text-xs font-bold">
               <button
                 type="button"
-                onClick={() => setAuthMethod('email')}
-                className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
-                  authMethod === 'email' ? 'bg-[#1F3D2B] text-white shadow-2xs' : 'text-[#5F5E5A]'
-                }`}
-              >
-                <Mail size={14} />
-                <span>Email Address</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setAuthMethod('mobile')}
-                className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
-                  authMethod === 'mobile' ? 'bg-[#1F3D2B] text-white shadow-2xs' : 'text-[#5F5E5A]'
+                onClick={() => { setAuthMode('phone'); setError(''); }}
+                className={`flex-1 py-2 rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+                  authMode === 'phone' ? 'bg-[#1F3D2B] text-white shadow-2xs' : 'text-[#5F5E5A]'
                 }`}
               >
                 <Phone size={14} />
                 <span>Mobile Number</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => { setAuthMode('email'); setError(''); }}
+                className={`flex-1 py-2 rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+                  authMode === 'email' ? 'bg-[#1F3D2B] text-white shadow-2xs' : 'text-[#5F5E5A]'
+                }`}
+              >
+                <Mail size={14} />
+                <span>Email Address</span>
               </button>
             </div>
 
@@ -226,165 +276,200 @@ export default function SignUpPage() {
                 Full Name
               </label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-[#8A8A82]">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#8A8A82]">
                   <User size={18} />
                 </div>
                 <input
                   type="text"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  placeholder="e.g. Ann Maria Devassy"
+                  placeholder="type here"
                   className="w-full pl-10 pr-4 py-3 bg-[#FAF9F5] border border-[#E5E2D8] rounded-xl text-sm font-medium text-[#1F3D2B] focus:outline-none focus:border-[#1F3D2B]"
                   required
                 />
               </div>
             </div>
 
-            {authMethod === 'email' ? (
+            {authMode === 'phone' ? (
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-[#5F5E5A] mb-1">
+                  Mobile Number ({selectedCountry.dialCode}) — Requires {selectedCountry.digits} Digits
+                </label>
+                
+                <div className="flex gap-2">
+                  {/* Country Flag Selector (Defaults to India +91) */}
+                  <div className="relative shrink-0">
+                    <select
+                      value={selectedCountry.code}
+                      onChange={(e) => handleCountryChange(e.target.value)}
+                      className="appearance-none bg-[#FAF9F5] border border-[#E5E2D8] rounded-xl px-3 py-3 pr-8 text-sm font-bold text-[#1F3D2B] focus:outline-none focus:border-[#1F3D2B] cursor-pointer"
+                    >
+                      {COUNTRIES.map((c) => (
+                        <option key={c.code} value={c.code}>
+                          {c.flag} {c.code} ({c.dialCode})
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown size={14} className="absolute right-2.5 top-4 text-[#8A8A82] pointer-events-none" />
+                  </div>
+
+                  {/* Phone Input with dynamic format matching chosen country flag */}
+                  <div className="relative flex-1">
+                    <input
+                      type="tel"
+                      value={phoneDigits}
+                      onChange={handlePhoneChange}
+                      placeholder={`${selectedCountry.digits} digits...`}
+                      className="w-full px-4 py-3 bg-[#FAF9F5] border border-[#E5E2D8] rounded-xl text-sm font-medium text-[#1F3D2B] focus:outline-none focus:border-[#1F3D2B] tracking-wider font-mono"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-between items-center mt-1.5 text-[11px]">
+                  <span className="text-[#8A8A82]">Country: {selectedCountry.flag} {selectedCountry.name}</span>
+                  <span className={`font-bold ${isPhoneValid ? 'text-[#3B6D11]' : 'text-amber-700'}`}>
+                    {phoneDigits.length} / {selectedCountry.digits} digits
+                  </span>
+                </div>
+              </div>
+            ) : (
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-[#5F5E5A] mb-1">
                   Email Address
                 </label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-[#8A8A82]">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#8A8A82]">
                     <Mail size={18} />
                   </div>
                   <input
                     type="email"
-                    value={emailAddress}
-                    onChange={(e) => setEmailAddress(e.target.value)}
-                    placeholder="username@gmail.com"
+                    value={emailInput}
+                    onChange={(e) => setEmailInput(e.target.value)}
+                    placeholder="type here"
                     className="w-full pl-10 pr-4 py-3 bg-[#FAF9F5] border border-[#E5E2D8] rounded-xl text-sm font-medium text-[#1F3D2B] focus:outline-none focus:border-[#1F3D2B]"
-                    required
                   />
                 </div>
-                <p className="text-[11px] text-[#8A8A82] mt-1">
-                  {isValidEmail ? '✓ Valid email format' : 'Enter valid email (username@gmail.com) to enable Send OTP'}
-                </p>
-              </div>
-            ) : (
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-[#5F5E5A] mb-1">
-                  Mobile Number (Select Country Flag)
-                </label>
-                <div className="flex gap-2">
-                  <select
-                    value={countryCode}
-                    onChange={(e) => setCountryCode(e.target.value)}
-                    className="px-3 py-3 bg-[#FAF9F5] border border-[#E5E2D8] rounded-xl text-sm font-bold text-[#1F3D2B]"
-                  >
-                    {COUNTRIES.map((c) => (
-                      <option key={c.code + c.name} value={c.code}>
-                        {c.flag} {c.code} ({c.name})
-                      </option>
-                    ))}
-                  </select>
-
-                  <div className="relative flex-1">
-                    <input
-                      type="tel"
-                      value={phoneNumber}
-                      onChange={(e) => setPhoneNumber(e.target.value)}
-                      placeholder="98765 43210"
-                      className="w-full px-4 py-3 bg-[#FAF9F5] border border-[#E5E2D8] rounded-xl text-sm font-medium text-[#1F3D2B] focus:outline-none focus:border-[#1F3D2B]"
-                      required
-                    />
-                  </div>
-                </div>
-                <p className="text-[11px] text-[#8A8A82] mt-1">
-                  Selected Country Prefix: <strong className="text-[#1F3D2B]">{countryCode}</strong> {isValidPhone ? '✓ Valid mobile format' : 'Enter mobile number to enable Send OTP'}
-                </p>
+                <p className="text-[11px] text-[#8A8A82] mt-1">Must be valid format (e.g. username@gmail.com)</p>
               </div>
             )}
 
             <button
               type="submit"
-              disabled={isLoading || !isInputValid || !fullName}
-              className="w-full bg-[#1F3D2B] hover:bg-[#152a1d] disabled:bg-gray-300 disabled:cursor-not-allowed text-white py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-xs"
+              disabled={isLoading || !canSendOtp}
+              className={`w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-xs ${
+                canSendOtp
+                  ? 'bg-[#1F3D2B] hover:bg-[#152a1d] text-white cursor-pointer'
+                  : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+              }`}
             >
-              <span>{isInputValid ? 'Send OTP Code' : 'Enter Valid Info to Send OTP'}</span>
+              <span>{isLoading ? 'Sending OTP...' : 'Send OTP Verification Code'}</span>
               <ArrowRight size={16} />
             </button>
           </form>
         )}
 
-        {/* STEP 2: Verify Exact Sent OTP Code */}
+        {/* STEP 2: Verification of Sent OTP */}
         {step === 2 && (
-          <form onSubmit={handleStep2} className="space-y-4">
+          <form onSubmit={handleStep2VerifyOTP} className="space-y-4">
+            <div className="bg-[#FAF9F5] border border-[#E5E2D8] p-4 rounded-2xl text-center space-y-1">
+              <span className="text-xs text-[#8A8A82]">Verification Code Sent To:</span>
+              <p className="font-bold text-sm text-[#1F3D2B] font-mono">{targetIdentifier}</p>
+            </div>
+
+            {/* Verification OTP Display Alert for Testing */}
+            <div className="bg-[#EAF0E7] border border-[#3B6D11]/30 text-[#1F3D2B] p-3 rounded-xl text-xs space-y-1">
+              <span className="font-bold text-[#3B6D11] block flex items-center gap-1">
+                <CheckCircle size={14} /> OTP Generated & Sent Successfully
+              </span>
+              <p className="text-[11px]">
+                Enter your received OTP code: <strong className="font-mono text-base text-[#3B6D11]">{sentOtpCode}</strong>
+              </p>
+            </div>
+
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-[#5F5E5A] mb-1">
                 Enter 6-Digit OTP Code
               </label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-[#8A8A82]">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#8A8A82]">
                   <KeyRound size={18} />
                 </div>
                 <input
                   type="text"
                   maxLength={6}
                   value={otpCode}
-                  onChange={(e) => setOtpCode(e.target.value)}
-                  placeholder="Enter 6-digit OTP"
-                  className="w-full pl-10 pr-4 py-3 bg-[#FAF9F5] border border-[#E5E2D8] rounded-xl text-center text-lg font-mono font-bold tracking-widest text-[#1F3D2B] focus:outline-none focus:border-[#1F3D2B]"
+                  onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
+                  placeholder="enter code"
+                  className="w-full pl-10 pr-4 py-3 bg-[#FAF9F5] border border-[#E5E2D8] rounded-xl text-lg font-bold tracking-widest text-center text-[#1F3D2B] font-mono"
                   required
                 />
               </div>
             </div>
 
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-[#8A8A82]">
-                {resendTimer > 0 ? `Resend code in ${resendTimer}s` : 'Code expired'}
-              </span>
+            <button
+              type="submit"
+              disabled={isLoading || otpCode.length < 4}
+              className="w-full bg-[#1F3D2B] hover:bg-[#152a1d] text-white py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-xs disabled:opacity-50"
+            >
+              <span>{isLoading ? 'Verifying OTP...' : 'Verify OTP & Continue'}</span>
+              <ArrowRight size={16} />
+            </button>
+
+            <div className="flex justify-between items-center text-xs pt-2">
+              <button
+                type="button"
+                onClick={() => setStep(1)}
+                className="text-[#5F5E5A] hover:underline"
+              >
+                Change {authMode === 'email' ? 'Email' : 'Number'}
+              </button>
+
               <button
                 type="button"
                 onClick={handleResendOTP}
-                disabled={isResendDisabled}
-                className="text-[#1F3D2B] font-bold hover:underline disabled:opacity-40 flex items-center gap-1"
+                disabled={isResendDisabled || isLoading}
+                className="text-[#D4AF6A] font-bold hover:underline disabled:opacity-40 flex items-center gap-1"
               >
                 <RefreshCw size={12} />
-                <span>Resend OTP</span>
+                <span>{isResendDisabled ? `Resend OTP in ${resendTimer}s` : 'Resend OTP'}</span>
               </button>
             </div>
-
-            <button
-              type="submit"
-              disabled={isLoading || otpCode.length < 6}
-              className="w-full bg-[#1F3D2B] hover:bg-[#152a1d] disabled:bg-gray-300 text-white py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-xs"
-            >
-              <span>Verify & Continue</span>
-              <CheckCircle size={16} />
-            </button>
           </form>
         )}
 
-        {/* STEP 3: Set Credentials */}
+        {/* STEP 3: Password & Credentials Creation */}
         {step === 3 && (
-          <form onSubmit={handleStep3} className="space-y-4">
+          <form onSubmit={handleStep3SetCredentials} className="space-y-4">
+            <div className="bg-[#EAF0E7] border border-[#3B6D11]/30 p-3 rounded-xl text-xs text-[#3B6D11] font-bold flex items-center gap-2">
+              <CheckCircle size={16} />
+              <span>OTP Verified Successfully! Set your login password.</span>
+            </div>
+
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-[#5F5E5A] mb-1">
-                Verified Account Login ID
+                Your Scalpeutical Login ID
               </label>
               <input
                 type="text"
-                value={loginId}
                 readOnly
-                className="w-full px-4 py-3 bg-[#EAF0E7] border border-[#3B6D11]/30 rounded-xl text-sm font-bold text-[#1F3D2B]"
+                value={loginId}
+                className="w-full px-4 py-3 bg-gray-100 border border-[#E5E2D8] rounded-xl text-sm font-medium text-[#1F3D2B] font-mono"
               />
             </div>
 
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-[#5F5E5A] mb-1">
-                Set Password
+                Set Account Password
               </label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-[#8A8A82]">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#8A8A82]">
                   <Lock size={18} />
                 </div>
                 <input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="At least 6 characters"
+                  placeholder="••••••••"
                   className="w-full pl-10 pr-4 py-3 bg-[#FAF9F5] border border-[#E5E2D8] rounded-xl text-sm font-medium text-[#1F3D2B]"
                   required
                 />
@@ -396,14 +481,14 @@ export default function SignUpPage() {
                 Confirm Password
               </label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-[#8A8A82]">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#8A8A82]">
                   <Lock size={18} />
                 </div>
                 <input
                   type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Repeat password"
+                  placeholder="••••••••"
                   className="w-full pl-10 pr-4 py-3 bg-[#FAF9F5] border border-[#E5E2D8] rounded-xl text-sm font-medium text-[#1F3D2B]"
                   required
                 />
@@ -412,10 +497,10 @@ export default function SignUpPage() {
 
             <button
               type="submit"
-              disabled={isLoading || !password || password !== confirmPassword}
-              className="w-full bg-[#1F3D2B] hover:bg-[#152a1d] disabled:bg-gray-300 text-white py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-xs"
+              disabled={isLoading}
+              className="w-full bg-[#1F3D2B] hover:bg-[#152a1d] text-white py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-xs"
             >
-              <span>Complete Registration & Setup Profile</span>
+              <span>{isLoading ? 'Creating Profile...' : 'Complete & Proceed to Profile Setup'}</span>
               <ArrowRight size={16} />
             </button>
           </form>
@@ -423,9 +508,9 @@ export default function SignUpPage() {
 
         <div className="pt-4 border-t border-[#E5E2D8] text-center">
           <p className="text-xs text-[#5F5E5A]">
-            Already registered?{' '}
+            Already have an account?{' '}
             <Link href="/auth/login" className="text-[#1F3D2B] font-bold underline hover:text-[#3B6D11]">
-              Sign In Here
+              Sign In
             </Link>
           </p>
         </div>

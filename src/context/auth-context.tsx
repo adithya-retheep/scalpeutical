@@ -11,9 +11,8 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (loginId: string, pass: string) => Promise<boolean>;
-  demoLogin: () => Promise<boolean>;
-  signUpPhone: (fullName: string, phone: string) => Promise<string>;
-  verifyOTP: (code: string) => Promise<boolean>;
+  signUpSendOTP: (identifier: string, isEmail: boolean) => Promise<{ verificationId: string; generatedOtp: string }>;
+  verifyOTP: (enteredOtp: string, expectedOtp: string) => Promise<boolean>;
   setCredentials: (loginId: string, pass: string) => Promise<boolean>;
   logout: () => void;
   refreshUser: () => void;
@@ -32,7 +31,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   // Temporary signup flow state
-  const [pendingSignup, setPendingSignup] = useState<{ fullName?: string; phone?: string; verificationId?: string }>({});
+  const [pendingSignup, setPendingSignup] = useState<{ identifier?: string; verificationId?: string; generatedOtp?: string }>({});
 
   const refreshUser = () => {
     const storedUser = StorageStore.getUser();
@@ -73,28 +72,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return true;
   };
 
-  const demoLogin = async (): Promise<boolean> => {
-    setIsLoading(true);
-    await new Promise(res => setTimeout(res, 300));
-    StorageStore.initializeDemoDataIfNeeded();
-    refreshUser();
-    setIsLoading(false);
-    return true;
-  };
-
-  const signUpPhone = async (fullName: string, phone: string): Promise<string> => {
-    setIsLoading(true);
-    await new Promise(res => setTimeout(res, 500));
-    const verificationId = `v_${Math.random().toString(36).substring(2, 8)}`;
-    setPendingSignup({ fullName, phone, verificationId });
-    setIsLoading(false);
-    return verificationId;
-  };
-
-  const verifyOTP = async (code: string): Promise<boolean> => {
+  const signUpSendOTP = async (identifier: string, isEmail: boolean): Promise<{ verificationId: string; generatedOtp: string }> => {
     setIsLoading(true);
     await new Promise(res => setTimeout(res, 400));
-    if (code.length >= 4) {
+    const verificationId = `v_${Math.random().toString(36).substring(2, 8)}`;
+    // Generate explicit 6-digit OTP
+    const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
+    setPendingSignup({ identifier, verificationId, generatedOtp });
+    setIsLoading(false);
+    return { verificationId, generatedOtp };
+  };
+
+  const verifyOTP = async (enteredOtp: string, expectedOtp: string): Promise<boolean> => {
+    setIsLoading(true);
+    await new Promise(res => setTimeout(res, 400));
+    // Verify entered OTP matches generated OTP or demo fallback (123456)
+    if (enteredOtp.trim() === expectedOtp.trim() || enteredOtp.trim() === '123456') {
       setIsLoading(false);
       return true;
     }
@@ -108,8 +101,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // NEW USER -> profileCompleted: false, baselineCompleted: false
     const newUser: UserProfile = {
       userId: `user_${Math.random().toString(36).substring(2, 9)}`,
-      fullName: pendingSignup.fullName || 'New User',
-      phoneNumber: pendingSignup.phone || '+910000000000',
+      fullName: 'New User',
+      phoneNumber: pendingSignup.identifier || '+919876543210',
       loginId: loginId,
       profileCompleted: false,
       baselineCompleted: false,
@@ -160,8 +153,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isAuthenticated,
         isLoading,
         login,
-        demoLogin,
-        signUpPhone,
+        signUpSendOTP,
         verifyOTP,
         setCredentials,
         logout,
