@@ -229,42 +229,7 @@ export default function SignUpPage() {
   return (
     <div className="min-h-[85vh] flex items-center justify-center py-6 px-4 relative">
       
-      {/* SIMULATED PHONE / EMAIL PUSH NOTIFICATION BANNER */}
-      {showPushToast && (
-        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 max-w-sm w-[92%] bg-[#1F3D2B] text-white p-4 rounded-2xl shadow-2xl border border-[#D4AF6A]/50 flex items-start gap-3 animate-in slide-in-from-top-6 duration-300">
-          <div className="w-9 h-9 rounded-full bg-[#D4AF6A] text-[#1F3D2B] flex items-center justify-center font-bold text-sm shrink-0">
-            💬
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex justify-between items-center mb-0.5">
-              <span className="text-[10px] uppercase font-bold text-[#D4AF6A] tracking-wider">
-                {authMode === 'email' ? 'Mailbox Message Dispatched' : 'SMS Carrier Message Dispatched'}
-              </span>
-              <span className="text-[10px] text-gray-300">just now</span>
-            </div>
-            <p className="text-xs font-medium text-gray-100 leading-snug">
-              Scalpeutical OTP for <strong className="text-white font-mono">{targetIdentifier}</strong>: <strong className="font-mono text-base text-[#D4AF6A]">{sentOtpCode}</strong>
-            </p>
-            <button
-              type="button"
-              onClick={() => {
-                setOtpCode(sentOtpCode);
-                setShowPushToast(false);
-              }}
-              className="mt-2 text-[11px] font-bold text-[#D4AF6A] underline hover:text-white flex items-center gap-1"
-            >
-              <Copy size={12} />
-              <span>Tap to Auto-Fill Code ({sentOtpCode})</span>
-            </button>
-          </div>
-          <button
-            onClick={() => setShowPushToast(false)}
-            className="text-gray-400 hover:text-white text-xs font-bold p-1"
-          >
-            ✕
-          </button>
-        </div>
-      )}
+
 
       <div className="max-w-md w-full bg-white border border-[#E5E2D8] rounded-3xl p-6 sm:p-8 shadow-sm space-y-6">
         
@@ -441,52 +406,7 @@ export default function SignUpPage() {
               <p className="font-bold text-sm text-[#1F3D2B] font-mono">{targetIdentifier}</p>
             </div>
 
-            {/* OTP Notification & Native App Opener Links */}
-            <div className="bg-[#EAF0E7] border border-[#3B6D11]/30 text-[#1F3D2B] p-4 rounded-2xl text-xs space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-[#3B6D11] flex items-center gap-1.5">
-                  <CheckCircle size={16} /> Dispatched to {authMode === 'email' ? 'Mailbox' : 'SMS Messages'}
-                </span>
-                <span className="w-2 h-2 rounded-full bg-[#3B6D11] animate-ping" />
-              </div>
 
-              <p className="text-[11px] text-[#5F5E5A] leading-relaxed">
-                An OTP verification code was sent to <strong className="font-mono text-[#1F3D2B]">{targetIdentifier}</strong>.
-              </p>
-
-              {/* Native Device Mailbox / SMS Messages Launcher */}
-              {authMode === 'email' ? (
-                <a
-                  href={`mailto:${targetIdentifier}?subject=${encodeURIComponent('Scalpeutical Verification Code')}&body=${encodeURIComponent(`Your Scalpeutical 6-digit OTP code is ${sentOtpCode}`)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full bg-[#1F3D2B] hover:bg-[#152a1d] text-white py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-2xs mt-1"
-                >
-                  <Mail size={14} />
-                  <span>Open Email Mailbox App</span>
-                  <ExternalLink size={12} />
-                </a>
-              ) : (
-                <a
-                  href={`sms:${targetIdentifier.replace(/\s+/g, '')}?body=${encodeURIComponent(`Scalpeutical Verification Code: ${sentOtpCode}`)}`}
-                  className="w-full bg-[#1F3D2B] hover:bg-[#152a1d] text-white py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-2xs mt-1"
-                >
-                  <Send size={14} />
-                  <span>Open Phone Messages App</span>
-                  <ExternalLink size={12} />
-                </a>
-              )}
-
-              {!showPushToast && (
-                <button
-                  type="button"
-                  onClick={() => setShowPushToast(true)}
-                  className="text-[11px] font-bold text-[#3B6D11] underline flex items-center gap-1 mt-1"
-                >
-                  <BellRing size={12} /> View Push Notification Banner
-                </button>
-              )}
-            </div>
 
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-[#5F5E5A] mb-1">
