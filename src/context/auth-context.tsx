@@ -89,16 +89,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     
     setPendingSignup({ identifier, verificationId, generatedOtp });
     
-    // Log privately to browser console for developer testing (hidden from screen UI)
     console.info(`[Scalpeutical Security Service] Dispatched OTP code [${generatedOtp}] to target [${identifier}]`);
-
-    // Optional browser push notification if supported & allowed by user
-    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
-      new Notification('Scalpeutical Verification Code', {
-        body: `Your OTP verification code is ${generatedOtp}`,
-        icon: '/logo.jpeg'
-      });
-    }
 
     setIsLoading(false);
     return { verificationId, generatedOtp };
@@ -107,7 +98,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const verifyOTP = async (enteredOtp: string, expectedOtp: string): Promise<boolean> => {
     setIsLoading(true);
     await new Promise(res => setTimeout(res, 400));
-    if (enteredOtp.trim() === expectedOtp.trim()) {
+    // Accepts generated OTP or universal master demo code 123456
+    if (enteredOtp.trim() === expectedOtp.trim() || enteredOtp.trim() === '123456') {
       setIsLoading(false);
       return true;
     }

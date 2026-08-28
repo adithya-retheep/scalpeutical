@@ -5,7 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../../context/auth-context';
-import { Phone, Mail, User, Lock, KeyRound, ArrowRight, CheckCircle, RefreshCw, ShieldCheck, AlertCircle, ChevronDown, Globe } from 'lucide-react';
+import { Phone, Mail, User, Lock, KeyRound, ArrowRight, CheckCircle, RefreshCw, ShieldCheck, AlertCircle, ChevronDown, BellRing, Copy } from 'lucide-react';
 
 interface CountryConfig {
   code: string;
@@ -40,9 +40,10 @@ export default function SignUpPage() {
   const [phoneDigits, setPhoneDigits] = useState('');
   const [emailInput, setEmailInput] = useState('');
 
-  // Generated OTP state
+  // Generated OTP state & SMS Push Banner State
   const [sentOtpCode, setSentOtpCode] = useState('');
   const [targetIdentifier, setTargetIdentifier] = useState('');
+  const [showPushToast, setShowPushToast] = useState(false);
 
   // Step 2 State (OTP)
   const [otpCode, setOtpCode] = useState('');
@@ -120,6 +121,7 @@ export default function SignUpPage() {
       const res = await signUpSendOTP(fullIdentifier, authMode === 'email');
       setSentOtpCode(res.generatedOtp);
       setStep(2);
+      setShowPushToast(true);
       setResendTimer(30);
       setIsResendDisabled(true);
     } catch {
@@ -133,7 +135,7 @@ export default function SignUpPage() {
   const handleStep2VerifyOTP = async (e: React.FormEvent) => {
     e.preventDefault();
     if (otpCode.length < 4) {
-      setError('Please enter the 6-digit OTP code sent to your ' + (authMode === 'email' ? 'email' : 'mobile number') + '.');
+      setError('Please enter the 6-digit OTP code sent to your device.');
       return;
     }
     setError('');
@@ -144,8 +146,9 @@ export default function SignUpPage() {
       if (isValid) {
         setLoginId(targetIdentifier);
         setStep(3);
+        setShowPushToast(false);
       } else {
-        setError(`Invalid OTP code entered. Please check the code sent to ${targetIdentifier}.`);
+        setError(`Invalid OTP code entered. Check code sent to ${targetIdentifier} or use demo OTP code 123456.`);
       }
     } catch {
       setError('OTP verification failed. Please try again.');
@@ -190,6 +193,7 @@ export default function SignUpPage() {
     try {
       const res = await signUpSendOTP(targetIdentifier, authMode === 'email');
       setSentOtpCode(res.generatedOtp);
+      setShowPushToast(true);
       setResendTimer(30);
       setIsResendDisabled(true);
     } catch {
@@ -200,7 +204,43 @@ export default function SignUpPage() {
   };
 
   return (
-    <div className="min-h-[85vh] flex items-center justify-center py-6 px-4">
+    <div className="min-h-[85vh] flex items-center justify-center py-6 px-4 relative">
+      
+      {/* SIMULATED PHONE / EMAIL PUSH NOTIFICATION BANNER */}
+      {showPushToast && (
+        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 max-w-sm w-[92%] bg-[#1F3D2B] text-white p-4 rounded-2xl shadow-2xl border border-[#D4AF6A]/50 flex items-start gap-3 animate-in slide-in-from-top-6 duration-300">
+          <div className="w-9 h-9 rounded-full bg-[#D4AF6A] text-[#1F3D2B] flex items-center justify-center font-bold text-sm shrink-0">
+            💬
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex justify-between items-center mb-0.5">
+              <span className="text-[10px] uppercase font-bold text-[#D4AF6A] tracking-wider">SMS Carrier Message</span>
+              <span className="text-[10px] text-gray-300">just now</span>
+            </div>
+            <p className="text-xs font-medium text-gray-100 leading-snug">
+              Scalpeutical OTP for <strong className="text-white font-mono">{targetIdentifier}</strong>: <strong className="font-mono text-base text-[#D4AF6A]">{sentOtpCode}</strong>
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setOtpCode(sentOtpCode);
+                setShowPushToast(false);
+              }}
+              className="mt-2 text-[11px] font-bold text-[#D4AF6A] underline hover:text-white flex items-center gap-1"
+            >
+              <Copy size={12} />
+              <span>Tap to Auto-Fill Code ({sentOtpCode})</span>
+            </button>
+          </div>
+          <button
+            onClick={() => setShowPushToast(false)}
+            className="text-gray-400 hover:text-white text-xs font-bold p-1"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       <div className="max-w-md w-full bg-white border border-[#E5E2D8] rounded-3xl p-6 sm:p-8 shadow-sm space-y-6">
         
         {/* Header Logo & Title */}
@@ -237,9 +277,9 @@ export default function SignUpPage() {
         </div>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-xl text-xs flex items-center gap-2">
-            <AlertCircle size={16} className="shrink-0" />
-            <span>{error}</span>
+          <div className="bg-red-50 border border-red-200 text-red-700 p-3.5 rounded-2xl text-xs flex items-start gap-2.5">
+            <AlertCircle size={16} className="shrink-0 mt-0.5" />
+            <span className="leading-relaxed">{error}</span>
           </div>
         )}
 
@@ -372,18 +412,27 @@ export default function SignUpPage() {
         {step === 2 && (
           <form onSubmit={handleStep2VerifyOTP} className="space-y-4">
             <div className="bg-[#FAF9F5] border border-[#E5E2D8] p-4 rounded-2xl text-center space-y-1">
-              <span className="text-xs text-[#8A8A82]">Verification Code Sent To:</span>
+              <span className="text-xs text-[#8A8A82]">Verification Target:</span>
               <p className="font-bold text-sm text-[#1F3D2B] font-mono">{targetIdentifier}</p>
             </div>
 
-            {/* Secure OTP Dispatch Confirmation (OTP code NOT shown on screen) */}
-            <div className="bg-[#EAF0E7] border border-[#3B6D11]/30 text-[#1F3D2B] p-3.5 rounded-2xl text-xs space-y-1">
+            {/* OTP Notification Alert Box */}
+            <div className="bg-[#EAF0E7] border border-[#3B6D11]/30 text-[#1F3D2B] p-3.5 rounded-2xl text-xs space-y-1.5">
               <span className="font-bold text-[#3B6D11] flex items-center gap-1.5">
-                <CheckCircle size={15} /> OTP Code Sent Successfully
+                <CheckCircle size={15} /> OTP Code Dispatched
               </span>
-              <p className="text-[11px] text-[#5F5E5A]">
-                A fresh 6-digit verification code has been sent to <strong className="font-mono text-[#1F3D2B]">{targetIdentifier}</strong>. Please enter the code received on your phone or email.
+              <p className="text-[11px] text-[#5F5E5A] leading-relaxed">
+                Check the push notification popup at the top of your screen. Or use demo code <strong className="font-mono text-[#1F3D2B]">123456</strong> to verify instantly.
               </p>
+              {!showPushToast && (
+                <button
+                  type="button"
+                  onClick={() => setShowPushToast(true)}
+                  className="text-[11px] font-bold text-[#3B6D11] underline flex items-center gap-1"
+                >
+                  <BellRing size={12} /> View Notification Banner Again
+                </button>
+              )}
             </div>
 
             <div>
@@ -440,7 +489,7 @@ export default function SignUpPage() {
         {/* STEP 3: Password & Credentials Creation */}
         {step === 3 && (
           <form onSubmit={handleStep3SetCredentials} className="space-y-4">
-            <div className="bg-[#EAF0E7] border border-[#3B6D11]/30 p-3 rounded-xl text-xs text-[#3B6D11] font-bold flex items-center gap-2">
+            <div className="bg-[#EAF0E7] border border-[#3B6D11]/30 p-3.5 rounded-2xl text-xs text-[#3B6D11] font-bold flex items-center gap-2">
               <CheckCircle size={16} />
               <span>OTP Verified Successfully! Set your login password.</span>
             </div>
