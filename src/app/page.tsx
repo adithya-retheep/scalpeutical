@@ -10,6 +10,7 @@ import { ScalpTimelineChart } from '../components/ScalpTimelineChart';
 import { PhotoConsistencyMeter } from '../components/PhotoConsistencyMeter';
 import { RedFlagBanner } from '../components/RedFlagBanner';
 import { AudioNarrator } from '../components/AudioNarrator';
+import LoginPage from './auth/login/page';
 import {
   Scan,
   Camera,
@@ -51,13 +52,8 @@ export default function HomeDashboard() {
   const [contextSavedToast, setContextSavedToast] = useState(false);
 
   useEffect(() => {
-    // 1. Unauthenticated users FIRST go to Login Page
-    if (!user) {
-      router.push('/auth/login');
-      return;
-    }
+    if (!user) return;
 
-    // 2. New Users divert to Profile Setup -> Baseline Assessment
     if (user.profileCompleted === false) {
       router.push('/profile');
       return;
@@ -67,13 +63,11 @@ export default function HomeDashboard() {
       return;
     }
 
-    // 3. Returning Users stay on Home Dashboard
     StorageStore.initializeDemoDataIfNeeded();
     const allAssessments = StorageStore.getAssessments();
     setAssessments(allAssessments);
     setEnvLogs(StorageStore.getEnvironmentalLogs());
 
-    // Auto-pull local weather for user location
     fetch('/api/weather')
       .then((res) => res.json())
       .then((data) => {
@@ -88,10 +82,15 @@ export default function HomeDashboard() {
       .catch(() => {});
   }, [user, router]);
 
-  if (!user || user.profileCompleted === false || user.baselineCompleted === false) {
+  // Render Login Page FIRST when user is not signed in
+  if (!user) {
+    return <LoginPage />;
+  }
+
+  if (user.profileCompleted === false || user.baselineCompleted === false) {
     return (
       <div className="min-h-[70vh] flex items-center justify-center text-xs text-[#8A8A82]">
-        Directing to authentication / onboarding...
+        Directing to onboarding...
       </div>
     );
   }
