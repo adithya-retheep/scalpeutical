@@ -154,7 +154,7 @@ export default function SignUpPage() {
     }
   };
 
-  // Handle Step 3 Submission (Set Credentials)
+  // Handle Step 3 Submission (Set Credentials & Redirect Back to Sign In)
   const handleStep3SetCredentials = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!loginId || !password) {
@@ -174,8 +174,8 @@ export default function SignUpPage() {
     setIsLoading(true);
     try {
       await setCredentials(loginId, password);
-      // New user auto-diverts to Profile Setup -> Baseline Assessment -> Dashboard
-      router.push('/profile');
+      // Once created, redirect back to Sign In page so user logs in with new credentials!
+      router.push(`/auth/login?registered=true&loginId=${encodeURIComponent(loginId)}`);
     } catch {
       setError('Failed to complete registration.');
     } finally {
@@ -500,7 +500,7 @@ export default function SignUpPage() {
               disabled={isLoading}
               className="w-full bg-[#1F3D2B] hover:bg-[#152a1d] text-white py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-xs"
             >
-              <span>{isLoading ? 'Creating Profile...' : 'Complete & Proceed to Profile Setup'}</span>
+              <span>{isLoading ? 'Creating Account...' : 'Complete Registration & Go to Sign In'}</span>
               <ArrowRight size={16} />
             </button>
           </form>

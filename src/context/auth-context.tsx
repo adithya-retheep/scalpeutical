@@ -63,9 +63,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const storedUser = StorageStore.getUser();
     if (storedUser) {
       storedUser.loginId = loginId;
-      storedUser.profileCompleted = true;
-      storedUser.baselineCompleted = true;
       StorageStore.saveUser(storedUser);
+    } else {
+      const newUser: UserProfile = {
+        userId: `user_${Math.random().toString(36).substring(2, 9)}`,
+        fullName: 'Scalp Care User',
+        phoneNumber: loginId,
+        loginId: loginId,
+        profileCompleted: false,
+        baselineCompleted: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      StorageStore.saveUser(newUser);
     }
     refreshUser();
     setIsLoading(false);
@@ -76,7 +86,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(true);
     await new Promise(res => setTimeout(res, 400));
     const verificationId = `v_${Math.random().toString(36).substring(2, 8)}`;
-    // Generate explicit 6-digit OTP
     const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
     setPendingSignup({ identifier, verificationId, generatedOtp });
     setIsLoading(false);
@@ -86,7 +95,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const verifyOTP = async (enteredOtp: string, expectedOtp: string): Promise<boolean> => {
     setIsLoading(true);
     await new Promise(res => setTimeout(res, 400));
-    // Verify entered OTP matches generated OTP or demo fallback (123456)
     if (enteredOtp.trim() === expectedOtp.trim() || enteredOtp.trim() === '123456') {
       setIsLoading(false);
       return true;
@@ -98,11 +106,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const setCredentials = async (loginId: string, pass: string): Promise<boolean> => {
     setIsLoading(true);
     await new Promise(res => setTimeout(res, 500));
-    // NEW USER -> profileCompleted: false, baselineCompleted: false
+    // Save registered user profile to storage
     const newUser: UserProfile = {
       userId: `user_${Math.random().toString(36).substring(2, 9)}`,
-      fullName: 'New User',
-      phoneNumber: pendingSignup.identifier || '+919876543210',
+      fullName: 'Scalp Care User',
+      phoneNumber: pendingSignup.identifier || loginId,
       loginId: loginId,
       profileCompleted: false,
       baselineCompleted: false,
@@ -110,7 +118,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       updatedAt: new Date().toISOString()
     };
     StorageStore.saveUser(newUser);
-    refreshUser();
+    // Keep user logged out so they must sign in on Login page
+    localStorage.removeItem('scalpeutical_user');
+    setUser(null);
+    setIsAuthenticated(false);
     setIsLoading(false);
     return true;
   };
