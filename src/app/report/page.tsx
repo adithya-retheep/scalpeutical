@@ -124,7 +124,7 @@ export default function DermatologistReportPage() {
         <div className="border-b border-[#E5E2D8] pb-4 flex flex-wrap justify-between gap-4 text-xs">
           <div>
             <span className="text-[10px] uppercase font-bold text-[#8A8A82] block">PATIENT INFORMATION</span>
-            <span className="font-bold text-sm text-[#1F3D2B]">{user?.fullName || 'User'}</span>
+            <span className="font-bold text-sm text-[#1F3D2B]">{user?.fullName || 'Not Specified'}</span>
             <p className="text-[#5F5E5A]">{user?.ageRange || '25-34'} · {user?.sex || 'Male'} · Hair: {user?.hairType || 'Wavy'}</p>
           </div>
 

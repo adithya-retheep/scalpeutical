@@ -27,7 +27,7 @@ export type EvidenceType =
 
 export interface UserProfile {
   userId: string;
-  fullName: string;
+  fullName: string | null;
   phoneNumber: string;
   loginId: string;
   profileCompleted?: boolean;

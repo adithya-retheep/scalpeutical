@@ -113,7 +113,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     
     const newUser: UserProfile = {
       userId: `user_${Math.random().toString(36).substring(2, 9)}`,
-      fullName: fullName && fullName.trim().length > 0 ? fullName.trim() : 'Scalp Care User',
+      fullName: fullName && fullName.trim().length > 0 ? fullName.trim() : null,
       phoneNumber: pendingSignup.identifier || loginId,
       loginId: loginId.trim(),
       profileCompleted: false,

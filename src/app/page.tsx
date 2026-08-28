@@ -150,7 +150,7 @@ export default function HomeDashboard() {
       <div className="flex items-center justify-between border-b border-[#E5E2D8] pb-4">
         <div>
           <h1 className="font-serif text-2xl sm:text-3xl font-bold text-[#1F3D2B]">
-            {getGreeting()}, {user?.fullName || 'User'}
+            {getGreeting()}{user?.fullName ? `, ${user.fullName}` : ''}
           </h1>
           <p className="text-xs sm:text-sm text-[#8A8A82] mt-0.5">
             Your personal scalp tracking & observation overview
@@ -605,8 +605,8 @@ export default function HomeDashboard() {
       {/* MULTILINGUAL AUDIO NARRATION PLAYER */}
       <AudioNarrator
         title="Dashboard Audio Summary & Narration"
-        textEn={`Welcome ${user?.fullName || 'User'}. You are currently tracking ${activeProduct?.productName || 'Ketoconazole 2 percent Intensive Scalp Solution'} in week 4. Your baseline symptom score was 18 out of 30, and your latest score is 10 out of 30, representing a 44 percent observed reduction. Visible flaking appears reduced with high analysis confidence. Remember, AI assists and healthcare professionals decide.`}
-        textMl={`നമസ്കാരം ${user?.fullName || 'ഉപയോക്താവ്'}. നിങ്ങൾ ഇപ്പോൾ പ്രതിവാര തലയോട്ടി നിരീക്ഷണം പൂർത്തിയാക്കുന്നു. നിങ്ങളുടെ ആരംഭ സൂചിക 18 ഉം നിലവിലെ സൂചിക 10 ഉം ആണ്. താരംപിന്റെ അളവ് കുറഞ്ഞതായി കണ്ടെത്തി. ഓർക്കുക, AI സഹായം നൽകുന്നു, ആരോഗ്യ വിദഗ്ദ്ധർ തീരുമാനമെടുക്കുന്നു.`}
+        textEn={`Welcome${user?.fullName ? ` ${user.fullName}` : ''}. You are currently tracking ${activeProduct?.productName || 'Ketoconazole 2 percent Intensive Scalp Solution'} in week 4. Your baseline symptom score was 18 out of 30, and your latest score is 10 out of 30, representing a 44 percent observed reduction. Visible flaking appears reduced with high analysis confidence. Remember, AI assists and healthcare professionals decide.`}
+        textMl={`നമസ്കാരം${user?.fullName ? ` ${user.fullName}` : ''}. നിങ്ങൾ ഇപ്പോൾ പ്രതിവാര തലയോട്ടി നിരീക്ഷണം പൂർത്തിയാക്കുന്നു. നിങ്ങളുടെ ആരംഭ സൂചിക 18 ഉം നിലവിലെ സൂചിക 10 ഉം ആണ്. താരംപിന്റെ അളവ് കുറഞ്ഞതായി കണ്ടെത്തി. ഓർക്കുക, AI സഹായം നൽകുന്നു, ആരോഗ്യ വിദഗ്ദ്ധർ തീരുമാനമെടുക്കുന്നു.`}
       />
 
       {/* SECTION 9 — IMPORTANT ALERTS (IF APPLICABLE) */}
