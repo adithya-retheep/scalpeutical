@@ -20,7 +20,13 @@ import { useAuth } from '../context/auth-context';
 
 export function Navigation() {
   const pathname = usePathname();
-  const { activeProduct } = useAuth();
+  const { activeProduct, isAuthenticated } = useAuth();
+
+  // DO NOT show sidebar or bottom nav on Auth pages or if unauthenticated
+  const isAuthPage = pathname.startsWith('/auth') || pathname === '/login';
+  if (isAuthPage || !isAuthenticated) {
+    return null;
+  }
 
   const primaryNavItems = [
     { name: 'Home', href: '/', icon: Home },
