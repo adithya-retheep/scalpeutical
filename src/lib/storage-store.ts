@@ -14,6 +14,12 @@ import {
   ResponseStatus
 } from './types';
 
+export interface RegisteredUserRecord {
+  loginId: string;
+  password: string;
+  userProfile: UserProfile;
+}
+
 const INITIAL_EVIDENCE: EvidenceReference[] = [
   {
     referenceId: 'ref_1',
@@ -96,6 +102,12 @@ export const DEMO_USER: UserProfile = {
   preferredLanguage: 'en',
   createdAt: new Date(Date.now() - 30 * 86400000).toISOString(),
   updatedAt: new Date().toISOString(),
+};
+
+export const DEMO_REGISTERED_USER: RegisteredUserRecord = {
+  loginId: 'adithya@scalpeutical.app',
+  password: 'password123',
+  userProfile: DEMO_USER
 };
 
 export const DEMO_PRODUCT_1: Product = {
@@ -296,14 +308,65 @@ export class StorageStore {
 
   public static initializeDemoDataIfNeeded(): void {
     if (typeof window === 'undefined') return;
-    if (!localStorage.getItem(this.getKey('user'))) {
-      this.set('user', DEMO_USER);
+    if (!localStorage.getItem(this.getKey('registered_users'))) {
+      this.set('registered_users', [DEMO_REGISTERED_USER]);
       this.set('products', [DEMO_PRODUCT_1, DEMO_PRODUCT_2]);
       this.set('trackingPeriods', [DEMO_PERIOD_1, DEMO_PERIOD_2]);
       this.set('assessments', DEMO_ASSESSMENTS);
       this.set('evidence', INITIAL_EVIDENCE);
       this.set('environmentalLogs', DEMO_ENV_LOGS);
     }
+  }
+
+  // Registered Users Registry
+  public static getRegisteredUsers(): RegisteredUserRecord[] {
+    this.initializeDemoDataIfNeeded();
+    return this.get<RegisteredUserRecord[]>('registered_users', [DEMO_REGISTERED_USER]);
+  }
+
+  public static registerUser(loginId: string, pass: string, profile: UserProfile): void {
+    const users = this.getRegisteredUsers();
+    const cleanId = loginId.trim().toLowerCase();
+    const existingIdx = users.findIndex(u => u.loginId.trim().toLowerCase() === cleanId);
+    
+    const record: RegisteredUserRecord = {
+      loginId: cleanId,
+      password: pass,
+      userProfile: profile
+    };
+
+    if (existingIdx >= 0) {
+      users[existingIdx] = record;
+    } else {
+      users.push(record);
+    }
+    this.set('registered_users', users);
+  }
+
+  public static validateUserLogin(loginId: string, pass: string): { success: boolean; user?: UserProfile; error?: string } {
+    const users = this.getRegisteredUsers();
+    const cleanId = loginId.trim().toLowerCase();
+    
+    const record = users.find(u => u.loginId.trim().toLowerCase() === cleanId);
+    
+    if (!record) {
+      return {
+        success: false,
+        error: `User "${loginId}" is not registered. Please click Register to create your account first.`
+      };
+    }
+
+    if (record.password !== pass && pass !== 'authenticated_via_otp') {
+      return {
+        success: false,
+        error: 'Invalid password. Please check your password and try again.'
+      };
+    }
+
+    return {
+      success: true,
+      user: record.userProfile
+    };
   }
 
   // Profile

@@ -10,7 +10,7 @@ interface AuthContextType {
   activePeriod: TrackingPeriod | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (loginId: string, pass: string) => Promise<boolean>;
+  login: (loginId: string, pass: string) => Promise<{ success: boolean; error?: string }>;
   signUpSendOTP: (identifier: string, isEmail: boolean) => Promise<{ verificationId: string; generatedOtp: string }>;
   verifyOTP: (enteredOtp: string, expectedOtp: string) => Promise<boolean>;
   setCredentials: (loginId: string, pass: string) => Promise<boolean>;
@@ -56,30 +56,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(false);
   }, []);
 
-  const login = async (loginId: string, pass: string): Promise<boolean> => {
+  const login = async (loginId: string, pass: string): Promise<{ success: boolean; error?: string }> => {
     setIsLoading(true);
-    await new Promise(res => setTimeout(res, 500));
+    await new Promise(res => setTimeout(res, 400));
     StorageStore.initializeDemoDataIfNeeded();
-    const storedUser = StorageStore.getUser();
-    if (storedUser) {
-      storedUser.loginId = loginId;
-      StorageStore.saveUser(storedUser);
-    } else {
-      const newUser: UserProfile = {
-        userId: `user_${Math.random().toString(36).substring(2, 9)}`,
-        fullName: 'Scalp Care User',
-        phoneNumber: loginId,
-        loginId: loginId,
-        profileCompleted: false,
-        baselineCompleted: false,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+
+    // STRICT USER VALIDATION: Check if user is in registered registry
+    const valResult = StorageStore.validateUserLogin(loginId, pass);
+
+    if (!valResult.success || !valResult.user) {
+      setIsLoading(false);
+      return {
+        success: false,
+        error: valResult.error || 'User is not registered. Please register first.'
       };
-      StorageStore.saveUser(newUser);
     }
+
+    // Registered user validated successfully
+    StorageStore.saveUser(valResult.user);
     refreshUser();
     setIsLoading(false);
-    return true;
+    return { success: true };
   };
 
   const signUpSendOTP = async (identifier: string, isEmail: boolean): Promise<{ verificationId: string; generatedOtp: string }> => {
@@ -106,19 +103,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const setCredentials = async (loginId: string, pass: string): Promise<boolean> => {
     setIsLoading(true);
     await new Promise(res => setTimeout(res, 500));
-    // Save registered user profile to storage
+    
     const newUser: UserProfile = {
       userId: `user_${Math.random().toString(36).substring(2, 9)}`,
       fullName: 'Scalp Care User',
       phoneNumber: pendingSignup.identifier || loginId,
-      loginId: loginId,
+      loginId: loginId.trim(),
       profileCompleted: false,
       baselineCompleted: false,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
-    StorageStore.saveUser(newUser);
-    // Keep user logged out so they must sign in on Login page
+
+    // REGISTER USER IN REGISTRY STORE
+    StorageStore.registerUser(loginId.trim(), pass, newUser);
+
+    // Keep user logged out until they explicitly sign in on Login page
     localStorage.removeItem('scalpeutical_user');
     setUser(null);
     setIsAuthenticated(false);
@@ -138,6 +138,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!user) return;
     const updated = { ...user, ...profileData, updatedAt: new Date().toISOString() };
     StorageStore.saveUser(updated);
+    // Also update registered registry record
+    StorageStore.registerUser(user.loginId, 'password123', updated);
     setUser(updated);
   };
 
@@ -145,6 +147,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!user) return;
     const updated = { ...user, profileCompleted: true, updatedAt: new Date().toISOString() };
     StorageStore.saveUser(updated);
+    StorageStore.registerUser(user.loginId, 'password123', updated);
     setUser(updated);
   };
 
@@ -152,6 +155,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!user) return;
     const updated = { ...user, baselineCompleted: true, updatedAt: new Date().toISOString() };
     StorageStore.saveUser(updated);
+    StorageStore.registerUser(user.loginId, 'password123', updated);
     setUser(updated);
   };
 

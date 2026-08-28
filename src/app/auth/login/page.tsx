@@ -31,7 +31,7 @@ function LoginForm() {
     }
   }, [searchParams]);
 
-  // Password Sign In
+  // Password Sign In with STRICT Registered User Check
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!loginId.trim()) {
@@ -46,14 +46,14 @@ function LoginForm() {
     setIsSubmitting(true);
 
     try {
-      const success = await login(loginId.trim(), password);
-      if (success) {
+      const res = await login(loginId.trim(), password);
+      if (res.success) {
         router.push('/');
       } else {
-        setError('Invalid credentials. Please try again.');
+        setError(res.error || 'User is not registered. Please click Register to create an account first.');
       }
     } catch {
-      setError('Authentication failed.');
+      setError('Authentication failed. Please check your credentials.');
     } finally {
       setIsSubmitting(false);
     }
@@ -92,9 +92,9 @@ function LoginForm() {
       )}
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-xl text-xs flex items-center gap-2">
-          <AlertCircle size={16} className="shrink-0" />
-          <span>{error}</span>
+        <div className="bg-red-50 border border-red-200 text-red-700 p-3.5 rounded-2xl text-xs flex items-start gap-2.5">
+          <AlertCircle size={16} className="shrink-0 mt-0.5" />
+          <span className="leading-relaxed">{error}</span>
         </div>
       )}
 
